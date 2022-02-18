@@ -9,13 +9,12 @@ class Arima:
     def __init__(self, data, p_max=5, q_max=5, criterion='aic', seasonal=3):
 
         self._data = data
-        self._data.index.freq = self._data.index.inferred_freq
         self._p_max = p_max
         self._q_max = q_max
         self._criterion = criterion
 
         decompositor = Decompositor(self._data, seasonal=seasonal)
-        self._decomposed = decompositor.decomposed()
+        self._decomposed = decompositor.decompose()
         self._season = decompositor.get_season()
         self._trend = decompositor.get_trend()
 

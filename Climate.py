@@ -1,6 +1,8 @@
+from Decompose import Decompositor
 import pandas as pd
 import numpy as np
-import pycountry_convert as pc
+import seaborn as sns
+from copy import deepcopy
 import statsmodels.formula.api as sm
 from statsmodels.tsa.seasonal import STL
 from scipy.stats import pearsonr
@@ -8,26 +10,22 @@ from scipy.misc import derivative
 from scipy.optimize import fsolve
 
 
-def create_continents(filename='final_data.csv'):
-
-    def get_continent(country):
-
-        try:
-            return pc.country_alpha2_to_continent_code(pc.country_name_to_country_alpha2(country))
-        except:
-            pass
-
-    df = pd.read_csv(filename)
-    df.dt = pd.to_datetime(df.dt)
-    df['Continent'] = df.apply(lambda row: get_continent(row.Country), axis=1)
-    df.to_csv(filename, index=False)
-
-
 class Climate:
 
     def __init__(self, data):
 
         self._data = data
+        self._preprocess()
+
+        self._start = self._data.index[0]
+        self._end = self._data.index[-1]
+
+    def _preprocess(self):
+
+        self._data['x'] = np.arange(len(self._data))
+        self._data.index = pd.to_datetime(self._data.dt)
+        self._data.index.freq = self._data.index.inferred_freq
+        self._data.drop(columns='dt', inplace=True)
 
     def regression_coef(self):
 
@@ -35,7 +33,7 @@ class Climate:
 
     def inflection_point(self, x0=None, deg=3):
 
-        xs, ys = self._data.x, self._data.AverageTemperature
+        xs, ys = np.array(self._data.x.values), np.array(self._data.AverageTemperature.values)
         x0 = x0 if x0 else np.mean([xs[0], xs[-1]])
         coef = np.polyfit(xs, ys, deg)
         construct_polynomial = lambda coefs: np.vectorize(
@@ -43,11 +41,54 @@ class Climate:
         return self._data.index[int(round(
             fsolve(lambda x_prime: derivative(construct_polynomial(coef), x_prime, n=2), x0)[0]))], coef[0]
 
-    def correlation(self, decompose=True, seasonal=3):
+    def correlation(self, decomposed=False, seasonal=3):
 
-        y = self._data.AverageTemperature
-        y = y - STL(y, seasonal=seasonal).fit().seasonal if decompose else y
-        return pearsonr(self._data.x, y)
+        return pearsonr(self._data.x, self.data(decomposed=decomposed, seasonal=seasonal).AverageTemperature)
+
+    def _endpoints(self, start, end):
+
+        if not start:
+            start = self._start
+
+        if not end:
+            end = self._end
+
+        return start, end
+
+    @staticmethod
+    def _decompose(data, seasonal):
+
+        copied = deepcopy(data)
+        Decompositor(copied.AverageTemperature, seasonal=seasonal).decompose(trend=False)
+
+        return copied
+
+    def data(self, start=None, end=None, decomposed=False, seasonal=3):
+
+        start, end = self._endpoints(start, end)
+        data = self._data.loc[start:end, :]
+
+        return self._decompose(data, seasonal) if decomposed else data
+
+    def view(self, rows=10):
+
+        return self.data(end=list(self._data.index)[rows-1])
+
+    def plot(self, start=None, end=None, year_step=10, decomposed=False, seasonal=3):
+
+        data = self.data(start=start, end=end, decomposed=decomposed, seasonal=seasonal)
+        g = sns.lineplot(data=data, x='x', y='AverageTemperature')
+        g.set_xticks(np.array(data.x.values)[::12 * year_step])
+        g.set_xticklabels(data.year.unique()[::year_step], rotation=45)
+        return g
+
+    def plot_regression(self, start=None, end=None, year_step=10, decomposed=False, seasonal=3):
+
+        data = self.data(start=start, end=end, decomposed=decomposed, seasonal=seasonal)
+        g = sns.lmplot(data=data, x='x', y='AverageTemperature', lowess=True, scatter=False)
+        g.axes.flat[0].set_xticks(np.array(data.x.values)[::12 * year_step])
+        g.axes.flat[0].set_xticklabels(data.year.unique()[::year_step], rotation=45)
+        return g
 
 
 class Country(Climate):
@@ -55,10 +96,13 @@ class Country(Climate):
     def __init__(self, country, filename='final_data.csv'):
 
         self._country = country
-        self._df = pd.read_csv(filename)
-        self._df = df[df.Country == self._country]
-        self._df['x'] = np.arange(len(self._df))
-        super().__init__(df)
+        super().__init__(self._load_data(filename))
+
+    def _load_data(self, filename):
+
+        data = pd.read_csv(filename)
+
+        return data[data.Country == self._country][['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'year']]
 
 
 class Continent(Climate):
@@ -66,21 +110,18 @@ class Continent(Climate):
     def __init__(self, continent, filename='final_data.csv'):
 
         self._continent = continent
-        self._df = pd.read_csv(filename)
-        self._df = df[df.Continent == self._continent]
-        self._continent_data()
-        self._df['x'] = np.arange(len(self._df))
-        super().__init__(self._df)
+        super().__init__(self._load_data(filename))
 
-    def _continent_data(self):
+    def _load_data(self, filename):
 
-        self._df = self._df[self._df.Continent == self._continent].groupby('dt')[
-            ['AverageTemperature', 'AverageTemperatureUncertainty', 'year']].mean()
-        self._df.year = self._df.year.astype(int)
+        data = pd.read_csv(filename)
+        data = data[data.Continent == self._continent]
+        return self._aggregate_continent(data)
 
-        return self._df
+    def _aggregate_continent(self, data):
 
+        data = data[data.Continent == self._continent].groupby('dt')[
+            ['AverageTemperature', 'AverageTemperatureUncertainty', 'year']].mean().reset_index()
+        data.year = data.year.astype(int)
 
-if __name__ == '__main__':
-
-    create_continents()
+        return data

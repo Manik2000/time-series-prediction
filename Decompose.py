@@ -7,15 +7,19 @@ class Decompositor:
     def __init__(self, data, seasonal=3):
 
         self._data = data
-        self._data.index.freq = self._data.index.inferred_freq
         self._loess = STL(self._data, seasonal=seasonal).fit()
         self._season = self._loess.seasonal
         self._trend = self._loess.trend
         self._residual = self._loess.resid
 
-    def decomposed(self):
+    def decompose(self, season=True, trend=True):
 
-        return self._data - self._season - self._trend
+        data = self._data
+        if season:
+            data -= self._season
+        if trend:
+            data -= self._trend
+        return data
 
     def growth(self, order=1):
 
