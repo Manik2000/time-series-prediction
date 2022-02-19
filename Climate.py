@@ -1,7 +1,8 @@
 from Decompose import Decompositor
 import pandas as pd
 import numpy as np
-import seaborn as sns
+import plotly.graph_objects as go
+import plotly.express as px
 from copy import deepcopy
 import statsmodels.formula.api as sm
 from statsmodels.tsa.seasonal import STL
@@ -10,11 +11,16 @@ from scipy.misc import derivative
 from scipy.optimize import fsolve
 
 
+COLORS = px.colors.sequential.Plasma
+CURRENT = 0
+
+
 class Climate:
 
-    def __init__(self, data):
+    def __init__(self, data, name):
 
         self._data = data
+        self._name = name
         self._preprocess()
 
         self._start = self._data.index[0]
@@ -74,21 +80,54 @@ class Climate:
 
         return self.data(end=list(self._data.index)[rows-1])
 
-    def plot(self, start=None, end=None, year_step=10, decomposed=False, seasonal=3):
+    def plot(self, fig, start=None, end=None, year_step=10, decomposed=False, seasonal=3):
+
+        global COLORS
+        global CURRENT
 
         data = self.data(start=start, end=end, decomposed=decomposed, seasonal=seasonal)
-        g = sns.lineplot(data=data, x='x', y='AverageTemperature')
-        g.set_xticks(np.array(data.x.values)[::12 * year_step])
-        g.set_xticklabels(data.year.unique()[::year_step], rotation=45)
-        return g
 
-    def plot_regression(self, start=None, end=None, year_step=10, decomposed=False, seasonal=3):
+        line = px.line(data, x='x', y='AverageTemperature').data[-1]
+        line.name = self._name
+        line.showlegend = True
+        line.marker['color'] = COLORS[CURRENT % len(COLORS)]
+        fig.add_trace(line)
+        fig.update_layout(
+            xaxis=dict(
+                tickmode='array',
+                tickvals=np.array(data.x.values)[::12 * year_step],
+                ticktext=data.year.unique()[::year_step]
+            )
+        )
+        fig.update_xaxes(tickangle=45)
+
+        CURRENT += 1
+
+        return fig
+
+    def plot_regression(self, fig, start=None, end=None, year_step=10, decomposed=False, seasonal=3):
+
+        global COLORS
+        global CURRENT
 
         data = self.data(start=start, end=end, decomposed=decomposed, seasonal=seasonal)
-        g = sns.lmplot(data=data, x='x', y='AverageTemperature', lowess=True, scatter=False)
-        g.axes.flat[0].set_xticks(np.array(data.x.values)[::12 * year_step])
-        g.axes.flat[0].set_xticklabels(data.year.unique()[::year_step], rotation=45)
-        return g
+        trendline = px.scatter(data, x='x', y='AverageTemperature', trendline='lowess').data[1]
+        trendline.name = self._name
+        trendline.showlegend = True
+        trendline.marker['color'] = COLORS[CURRENT % len(COLORS)]
+        fig.add_trace(trendline)
+        fig.update_layout(
+            xaxis=dict(
+                tickmode='array',
+                tickvals=np.array(data.x.values)[::12 * year_step],
+                ticktext=data.year.unique()[::year_step]
+            )
+        )
+        fig.update_xaxes(tickangle=45)
+
+        CURRENT += 1
+
+        return fig
 
 
 class Country(Climate):
@@ -96,7 +135,7 @@ class Country(Climate):
     def __init__(self, country, filename='final_data.csv'):
 
         self._country = country
-        super().__init__(self._load_data(filename))
+        super().__init__(self._load_data(filename), self._country)
 
     def _load_data(self, filename):
 
@@ -110,7 +149,7 @@ class Continent(Climate):
     def __init__(self, continent, filename='final_data.csv'):
 
         self._continent = continent
-        super().__init__(self._load_data(filename))
+        super().__init__(self._load_data(filename), self._continent)
 
     def _load_data(self, filename):
 
