@@ -11,7 +11,7 @@ from scipy.misc import derivative
 from scipy.optimize import fsolve
 
 
-COLORS = px.colors.sequential.Plasma
+COLORS = px.colors.qualitative.Dark24
 CURRENT = 0
 
 
@@ -90,7 +90,7 @@ class Climate:
         line = px.line(data, x='x', y='AverageTemperature').data[-1]
         line.name = self._name
         line.showlegend = True
-        line.marker['color'] = COLORS[CURRENT % len(COLORS)]
+        line.line['color'] = COLORS[CURRENT % len(COLORS)]
         fig.add_trace(line)
         fig.update_layout(
             xaxis=dict(
