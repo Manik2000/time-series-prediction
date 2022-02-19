@@ -105,7 +105,7 @@ class Climate:
 
         return fig
 
-    def plot_regression(self, fig, start=None, end=None, year_step=10, decomposed=False, seasonal=3):
+    def plot_regression(self, fig, inflection=True, start=None, end=None, year_step=10, decomposed=False, seasonal=3):
 
         global COLORS
         global CURRENT
@@ -116,6 +116,8 @@ class Climate:
         trendline.showlegend = True
         trendline.marker['color'] = COLORS[CURRENT % len(COLORS)]
         fig.add_trace(trendline)
+        if inflection:
+            fig.add_vline(x=self._data.loc[self.inflection_point()[0], 'x'], line_width=1, line_color=COLORS[CURRENT % len(COLORS)])
         fig.update_layout(
             xaxis=dict(
                 tickmode='array',
