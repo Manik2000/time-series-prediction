@@ -22,5 +22,9 @@ def arima_page():
     st.altair_chart(p)
 
 
+def xgboost_page():
+    st.markdown(get_markdown_text("xgboost_page"))
+
+
 def lstm_page():
     st.markdown(get_markdown_text("lstm_page"))

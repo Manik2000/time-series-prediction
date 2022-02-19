@@ -1,5 +1,5 @@
 import streamlit as st
-from pages import lstm_page, eda_page, arima_page, home_page
+from pages import lstm_page, eda_page, arima_page, home_page, xgboost_page
 from streamlit_utils import get_markdown_text
 
 
@@ -15,6 +15,7 @@ mapping = {
     "Home": home_page,
     "EDA": eda_page,
     "Arima": arima_page,
+    "XGBoost": xgboost_page,
     "LSTM": lstm_page,
 }
 
