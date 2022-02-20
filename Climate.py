@@ -1,4 +1,5 @@
 from Smooth import Smoother
+from DataLoader import Temperature
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -71,7 +72,30 @@ class Climate:
 
         return copied
 
-    def data(self, start=None, end=None, smoothed=False, level=None, order=1):
+    def train(self, Model, lag=12, horizon=12, learning_rate=1e-3, epochs=100, test_size=.1):
+
+        model = Model()
+        data = Temperature(self._name, lag=lag, horizon=horizon, normalize=True)
+        model.train(data, learning_rate=learning_rate, epochs=epochs, test_size=test_size)
+        model.save(self._name)
+
+    def predict(self, horizon, Model):
+
+        try:
+            model = Model().load(self._name)
+        except FileNotFoundError:
+            self.train(model_class)
+            model = Model().load(self._name)
+
+        preds = model.predict(horizon)
+        pred_data = deepcopy(self._data.iloc[:horizon])
+        pred_data.index = pd.date_range(start=self._data.index[0] + pd.DateOffset(months=1), periods=horizon, freq='M')
+        pred_data['AverageTemperature'] = preds
+        self._data = pd.concat([self._data, pred_data])
+
+        return pred_data
+
+    def data(self, start=None, end=None, smoothed=False, level=None, order=1, pred=None):
 
         start, end = self._endpoints(start, end)
         data = self._data.loc[start:end, :]
@@ -82,12 +106,12 @@ class Climate:
 
         return self.data(end=list(self._data.index)[rows-1])
 
-    def plot(self, fig, prime=0, start=None, end=None, year_step=10, smoothed=False, level=None, order=1, inflection=False):
+    def plot(self, fig, pred=None, prime=0, start=None, end=None, year_step=10, smoothed=False, level=None, order=1, inflection=False):
 
         global COLORS
         global CURRENT
 
-        data = self._deriv_data(prime, start, end, smoothed, level, order)
+        data = self._deriv_data(prime, start, end, smoothed, level, order, pred)
 
         line = px.line(data, x='x', y='AverageTemperature').data[-1]
         line.name = self._name
@@ -118,9 +142,9 @@ class Climate:
         centered = np.array([ys[i + 1] - ys[i - 1] for i in range(1, len(ys) - 1)])
         return centered / 2 / h if prime == 1 else self._derivative(xs, centered / 2 / h, prime=prime - 1)
 
-    def _deriv_data(self, prime, start, end, smoothed, level, order):
+    def _deriv_data(self, prime, start, end, smoothed, level, order, pred):
 
-        data = self.data(start=start, end=end, smoothed=smoothed, level=level, order=order)
+        data = self.data(start=start, end=end, smoothed=smoothed, level=level, order=order, pred=pred)
         if prime == 0:
             return data
 

@@ -39,13 +39,12 @@ class TemperatureDataset(Dataset):
         
         return x, y
 
-
     def __len__(self):
 
         return self._samples
 
 
-class Temperature():
+class Temperature:
 
     def __init__(self, country, lag=1, horizon=1, size=None, by_batch=True, workers=None, shuffle=True, normalize=False):
 
