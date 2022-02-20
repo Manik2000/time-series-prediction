@@ -1,4 +1,4 @@
-from Decompose import Decompositor
+from Smooth import Smoother
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -33,23 +33,19 @@ class Climate:
         self._data.index.freq = self._data.index.inferred_freq
         self._data.drop(columns='dt', inplace=True)
 
-    def regression_coef(self):
+    def inflection_points(self, start=None, end=None, level=None, order=3, return_idx=False):
 
-        return sm.ols(data=self._data, formula='AverageTemperature ~ x').fit().params.x
+        data = self._deriv_data(1, start, end, True, level, order).AverageTemperature.values
+        indices = np.where([(data[i] - data[i-1]) * (data[i + 1] - data[i]) < 0 for i in range(1, len(data)-1)])[0]
 
-    def inflection_point(self, x0=None, deg=3):
+        if return_idx:
+            return indices
+        else:
+            return np.array([self._to_date(idx) for idx in indices])
 
-        xs, ys = np.array(self._data.x.values), np.array(self._data.AverageTemperature.values)
-        x0 = x0 if x0 else np.mean([xs[0], xs[-1]])
-        coef = np.polyfit(xs, ys, deg)
-        construct_polynomial = lambda coefs: np.vectorize(
-            lambda x: np.dot(coefs, np.array([x ** i for i in range(len(coefs) - 1, -1, -1)])))
-        return self._data.index[int(round(
-            fsolve(lambda x_prime: derivative(construct_polynomial(coef), x_prime, n=2), x0)[0]))], coef[0]
+    def correlation(self):
 
-    def correlation(self, decomposed=False, seasonal=3):
-
-        return pearsonr(self._data.x, self.data(decomposed=decomposed, seasonal=seasonal).AverageTemperature)
+        return pearsonr(self._data.x, self._data.AverageTemperature)
 
     def _endpoints(self, start, end):
 
@@ -61,36 +57,47 @@ class Climate:
 
         return start, end
 
+    def _to_date(self, idx, start=None):
+
+        start = start if start else self._data.index[0]
+
+        return start + pd.DateOffset(months=idx)
+
     @staticmethod
-    def _decompose(data, seasonal):
+    def _smooth(data, level, order):
 
         copied = deepcopy(data)
-        Decompositor(copied.AverageTemperature, seasonal=seasonal).decompose(trend=False)
+        copied['AverageTemperature'] = Smoother(copied).smooth(level, order)
 
         return copied
 
-    def data(self, start=None, end=None, decomposed=False, seasonal=3):
+    def data(self, start=None, end=None, smoothed=False, level=None, order=1):
 
         start, end = self._endpoints(start, end)
         data = self._data.loc[start:end, :]
 
-        return self._decompose(data, seasonal) if decomposed else data
+        return self._smooth(data, level, order) if smoothed else data
 
     def view(self, rows=10):
 
         return self.data(end=list(self._data.index)[rows-1])
 
-    def plot(self, fig, start=None, end=None, year_step=10, decomposed=False, seasonal=3):
+    def plot(self, fig, prime=0, start=None, end=None, year_step=10, smoothed=False, level=None, order=1, inflection=False):
 
         global COLORS
         global CURRENT
 
-        data = self.data(start=start, end=end, decomposed=decomposed, seasonal=seasonal)
+        data = self._deriv_data(prime, start, end, smoothed, level, order)
 
         line = px.line(data, x='x', y='AverageTemperature').data[-1]
         line.name = self._name
         line.showlegend = True
         line.line['color'] = COLORS[CURRENT % len(COLORS)]
+
+        if inflection:
+            for point in self.inflection_points(start=start, end=end, level=level, order=order, return_idx=True):
+                fig.add_vline(x=point, line_color=COLORS[CURRENT % len(COLORS)], line_width=1)
+
         fig.add_trace(line)
         fig.update_layout(
             xaxis=dict(
@@ -105,31 +112,22 @@ class Climate:
 
         return fig
 
-    def plot_regression(self, fig, inflection=True, start=None, end=None, year_step=10, decomposed=False, seasonal=3):
+    def _derivative(self, xs, ys, prime):
 
-        global COLORS
-        global CURRENT
+        h = (xs[-1] - xs[0]) / len(xs)
+        centered = np.array([ys[i + 1] - ys[i - 1] for i in range(1, len(ys) - 1)])
+        return centered / 2 / h if prime == 1 else self._derivative(xs, centered / 2 / h, prime=prime - 1)
 
-        data = self.data(start=start, end=end, decomposed=decomposed, seasonal=seasonal)
-        trendline = px.scatter(data, x='x', y='AverageTemperature', trendline='lowess').data[1]
-        trendline.name = self._name
-        trendline.showlegend = True
-        trendline.marker['color'] = COLORS[CURRENT % len(COLORS)]
-        fig.add_trace(trendline)
-        if inflection:
-            fig.add_vline(x=self._data.loc[self.inflection_point()[0], 'x'], line_width=1, line_color=COLORS[CURRENT % len(COLORS)])
-        fig.update_layout(
-            xaxis=dict(
-                tickmode='array',
-                tickvals=np.array(data.x.values)[::12 * year_step],
-                ticktext=data.year.unique()[::year_step]
-            )
-        )
-        fig.update_xaxes(tickangle=45)
+    def _deriv_data(self, prime, start, end, smoothed, level, order):
 
-        CURRENT += 1
+        data = self.data(start=start, end=end, smoothed=smoothed, level=level, order=order)
+        if prime == 0:
+            return data
 
-        return fig
+        y = self._derivative(data.x.values, data.AverageTemperature.values, prime)
+        data = data.iloc[prime:-prime, :]
+        data['AverageTemperature'] = y
+        return data
 
 
 class Country(Climate):
