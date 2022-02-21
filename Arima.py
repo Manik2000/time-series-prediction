@@ -1,4 +1,5 @@
 import pmdarima
+import joblib
 from Decompose import Decompositor
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.forecasting.stl import STLForecast
@@ -21,12 +22,11 @@ class Arima:
         self._p = 0
         self._q = 0
         self._model = None
-        self._choose_model()
 
         self._forecast = STLForecast(self._data, ARIMA, period=12, 
                                      model_kwargs=dict(order=(self._p, 0, self._q),
                                                        trend='ct')).fit()
-
+    
     def _choose_model(self):
         model = pmdarima.auto_arima(self._decomposed, 
                                     max_p = self._p_max,
@@ -35,6 +35,18 @@ class Arima:
         order = model.get_params()['order']
         self._p, self._q = order[0], order[2]
         self._model = model
+        
+    def train(self):
+        self._choose_model()
 
     def predict(self, horizon):
         return self._forecast.forecast(horizon)
+    
+    def predict_in_sample(self):
+        return self._model.predict_in_sample() + self._trend + self._season
+    
+    def save(self, label):
+        joblib.dump(self._model, "arima_" + label + ".pkl")
+    
+    def load(self, label):
+        self._model = joblib.load("arima_" + label + ".pkl")
