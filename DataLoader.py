@@ -29,7 +29,7 @@ class TemperatureDataset(Dataset):
 
         self._to_tensor = ToTensor() 
         self._normalize = normalize
-        self._normalizer= Normalize(np.mean(xy), np.std(xy))
+        self._normalizer = Normalize(np.mean(xy), np.std(xy))
 
     def __getitem__(self, idx):
 

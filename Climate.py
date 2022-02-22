@@ -72,12 +72,13 @@ class Climate:
 
         return copied
 
-    def train(self, Model, lag=12, horizon=12, learning_rate=1e-3, epochs=100, test_size=.1):
+    def train(self, Model, lag=12, horizon=12, learning_rate=1e-2, epochs=10):
 
-        model = Model()
-        data = Temperature(self._name, lag=lag, horizon=horizon, normalize=True)
-        model.train(data, learning_rate=learning_rate, epochs=epochs, test_size=test_size)
+        model = Model(lag=lag, horizon=horizon, learning_rate=learning_rate)
+        data = Temperature(self._name, lag=lag, horizon=horizon, normalize=False)
+        model.fit(data.get_dataloader(), epochs)
         model.save(self._name)
+        return model
 
     def predict(self, horizon, Model):
 
