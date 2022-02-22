@@ -4,8 +4,9 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-from copy import deepcopy
 import statsmodels.formula.api as sm
+from xicor.xicor import Xi
+from copy import deepcopy
 from statsmodels.tsa.seasonal import STL
 from scipy.stats import pearsonr
 from scipy.misc import derivative
@@ -44,9 +45,10 @@ class Climate:
         else:
             return np.array([self._to_date(idx) for idx in indices])
 
-    def correlation(self):
-
-        return pearsonr(self._data.x, self._data.AverageTemperature)
+    def correlation(self, decomposed=False, seasonal=3):
+        corr = Xi(self._data.x, self.data(decomposed=decomposed,                       
+                                          seasonal=seasonal).AverageTemperature)
+        return dict(correlation=corr.correlation, p_value=corr.pval_asymptotic())
 
     def _endpoints(self, start, end):
 
