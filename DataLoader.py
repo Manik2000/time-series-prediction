@@ -29,7 +29,7 @@ class TemperatureDataset(Dataset):
 
         self._to_tensor = ToTensor() 
         self._normalize = normalize
-        self._normalizer= Normalize(np.mean(xy), np.std(xy))
+        self._normalizer = Normalize(np.mean(xy), np.std(xy))
 
     def __getitem__(self, idx):
 
@@ -46,7 +46,7 @@ class TemperatureDataset(Dataset):
 
 class Temperature:
 
-    def __init__(self, country, lag=1, horizon=1, size=None, by_batch=True, workers=None, shuffle=True, normalize=False):
+    def __init__(self, country, lag=1, horizon=1, size=None, by_batch=True, workers=None, shuffle=True, normalize=False, val_size=.1, test_size=.1):
 
         self._dataset = TemperatureDataset(country, lag, horizon, normalize)
         self._records = len(self._dataset)
@@ -68,6 +68,6 @@ class Temperature:
 
         return {'records': self._records, 'batch_size': self._batch_size, 'iterations': self._iters}
 
-    def get_dataloader(self):
+    def get_dataloaders(self):
 
         return self._dataloader
