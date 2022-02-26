@@ -15,6 +15,7 @@ from scipy.optimize import fsolve
 
 COLORS = px.colors.qualitative.Dark24
 CURRENT = 0
+CONTINENTS = ['Asia', 'Europe', 'South America', 'Africa', 'North America', 'Oceania']
 
 
 class Climate:
@@ -78,7 +79,7 @@ class Climate:
 
         model = Model(lag=lag, horizon=horizon, hidden_size=hidden_size, learning_rate=learning_rate)
         data = Temperature(self._name, lag=lag, horizon=horizon, normalize=False, size=iters, by_batch=False)
-        model.fit(data.get_dataloader(), epochs)
+        model.fit(*data.get_dataloaders(), epochs)
         model.save(self._name)
         return model
 
@@ -166,9 +167,18 @@ class Country(Climate):
 
     def _load_data(self, filename):
 
-        data = pd.read_csv(filename)
+        global CONTINENTS
 
-        return data[data.Country == self._country][['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'year']]
+        data = pd.read_csv(filename)
+        data = data[data.Country == self._country][['dt', 'AverageTemperature', 'year']]
+
+        if len(data) > 0:
+            if self._country in CONTINENTS:
+                raise ValueError(f'{self._country} is a continent. Choose Continent class instead.')
+            else:
+                return data
+        else:
+            raise ValueError(f'There is no such a country {self._country}.')
 
 
 class Continent(Climate):
@@ -181,13 +191,13 @@ class Continent(Climate):
     def _load_data(self, filename):
 
         data = pd.read_csv(filename)
-        data = data[data.Continent == self._continent]
-        return self._aggregate_continent(data)
+        data = data[data.Country == self._continent][
+            ['dt', 'AverageTemperature', 'year']]
 
-    def _aggregate_continent(self, data):
-
-        data = data[data.Continent == self._continent].groupby('dt')[
-            ['AverageTemperature', 'AverageTemperatureUncertainty', 'year']].mean().reset_index()
-        data.year = data.year.astype(int)
-
-        return data
+        if len(data) > 0:
+            if self._continent not in CONTINENTS:
+                raise ValueError(f'{self._continent} is a country. Choose Country class instead.')
+            else:
+                return data
+        else:
+            raise ValueError(f'There is no such a continent {self._continent}.')

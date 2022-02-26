@@ -17,10 +17,11 @@ class ToTensor():
 
 class TemperatureDataset(Dataset):
 
-    def __init__(self, country, lag, horizon, normalize):
+    def __init__(self, country, lag, horizon, normalize, start=0, size=1):
 
         data = pd.read_csv('final_data.csv').loc[:, ['dt', 'AverageTemperature', 'Country']]
         data_country = data[data['Country'] == country].sort_values('dt')
+        data_country = data_country.iloc[int(start*len(data_country)):int((start+size)*len(data_country))]
         xy = np.array(data_country.AverageTemperature, dtype=np.float32)
         records = len(xy)
         self._samples = records - horizon - lag
@@ -46,15 +47,26 @@ class TemperatureDataset(Dataset):
 
 class Temperature:
 
-    def __init__(self, country, lag=1, horizon=1, size=None, by_batch=True, workers=None, shuffle=True, normalize=False, val_size=.1, test_size=.1):
+    def __init__(self, name, lag=1, horizon=1, size=None, by_batch=True, workers=None, normalize=False, val_size=.2, test_size=.1):
 
-        self._dataset = TemperatureDataset(country, lag, horizon, normalize)
-        self._records = len(self._dataset)
+        self._name = name
+        self._lag = lag
+        self._horizon = horizon
+        self._normalize = normalize
+
         self._workers = workers if workers else mp.cpu_count()
-        self._shuffle = shuffle
-        self._batch_size = self._records if not size else size if by_batch else ceil(self._records / size)
-        self._iters = ceil(self._records / self._batch_size)
-        self._dataloader = DataLoader(dataset=self._dataset, batch_size=self._batch_size, shuffle=self._shuffle, num_workers=self._workers)
+        self._size = size
+        self._by_batch = by_batch
+
+        self._train_size, self._train = self._create_dataloader(0, 1-val_size-test_size, True)
+        self._val_size, self._val = self._create_dataloader(1-val_size-test_size, val_size, False)
+        self._test_size, self._test = self._create_dataloader(1-test_size, test_size, False)
+
+    def _create_dataloader(self, start, size, shuffle):
+
+        dataset = TemperatureDataset(self._name, self._lag, self._horizon, self._normalize, start=start, size=size)
+        batch_size = len(dataset) if not self._size else self._size if self._by_batch else ceil(len(dataset) / self._size)
+        return len(dataset), DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, num_workers=self._workers)
 
     def head(self, rows=10):
 
@@ -66,8 +78,8 @@ class Temperature:
 
     def get_lengths(self):
 
-        return {'records': self._records, 'batch_size': self._batch_size, 'iterations': self._iters}
+        return {'train': self._train_size, 'val': self._val_size, 'test': self._test_size}
 
     def get_dataloaders(self):
 
-        return self._dataloader
+        return self._train, self._val, self._test
