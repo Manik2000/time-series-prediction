@@ -11,6 +11,7 @@ from statsmodels.tsa.seasonal import STL
 from scipy.stats import pearsonr
 from scipy.misc import derivative
 from scipy.optimize import fsolve
+from LSTM import ContinentLSTM
 
 
 COLORS = px.colors.qualitative.Dark24
@@ -47,6 +48,7 @@ class Climate:
             return np.array([self._to_date(idx) for idx in indices])
 
     def correlation(self, decomposed=False, seasonal=3):
+
         corr = Xi(self._data.x, self.data(decomposed=decomposed,                       
                                           seasonal=seasonal).AverageTemperature)
         return dict(correlation=corr.correlation, p_value=corr.pval_asymptotic())
@@ -77,21 +79,17 @@ class Climate:
 
     def train(self, Model, lag=12, horizon=12, hidden_size=10, learning_rate=1e-2, epochs=10, iters=100):
 
-        model = Model(lag=lag, horizon=horizon, hidden_size=hidden_size, learning_rate=learning_rate)
+        model = Model(self._name, lag=lag, horizon=horizon, hidden_size=hidden_size, learning_rate=learning_rate)
         data = Temperature(self._name, lag=lag, horizon=horizon, normalize=False, size=iters, by_batch=False)
         model.fit(*data.get_dataloaders(), epochs)
-        model.save(self._name)
+
         return model
 
-    def predict(self, horizon, Model):
+    def predict(self, Model, horizon):
 
-        try:
-            model = Model().load(self._name)
-        except FileNotFoundError:
-            self.train(model_class)
-            model = Model().load(self._name)
+        model = Model.load(self._name)
 
-        preds = model.predict(horizon)
+        preds = model.predict(self.data().AverageTemperature.values[-model._seq_len:], horizon)
         pred_data = deepcopy(self._data.iloc[:horizon])
         pred_data.index = pd.date_range(start=self._data.index[0] + pd.DateOffset(months=1), periods=horizon, freq='M')
         pred_data['AverageTemperature'] = preds
@@ -99,7 +97,7 @@ class Climate:
 
         return pred_data
 
-    def data(self, start=None, end=None, smoothed=False, level=None, order=1, pred=None):
+    def data(self, start=None, end=None, smoothed=False, level=None, order=1):
 
         start, end = self._endpoints(start, end)
         data = self._data.loc[start:end, :]
@@ -158,29 +156,6 @@ class Climate:
         return data
 
 
-class Country(Climate):
-
-    def __init__(self, country, filename='final_data.csv'):
-
-        self._country = country
-        super().__init__(self._load_data(filename), self._country)
-
-    def _load_data(self, filename):
-
-        global CONTINENTS
-
-        data = pd.read_csv(filename)
-        data = data[data.Country == self._country][['dt', 'AverageTemperature', 'year']]
-
-        if len(data) > 0:
-            if self._country in CONTINENTS:
-                raise ValueError(f'{self._country} is a continent. Choose Continent class instead.')
-            else:
-                return data
-        else:
-            raise ValueError(f'There is no such a country {self._country}.')
-
-
 class Continent(Climate):
 
     def __init__(self, continent, filename='final_data.csv'):
@@ -201,3 +176,45 @@ class Continent(Climate):
                 return data
         else:
             raise ValueError(f'There is no such a continent {self._continent}.')
+
+
+class Country(Climate):
+
+    def __init__(self, country, filename='final_data.csv'):
+
+        self._country = country
+        self._continent = None
+        super().__init__(self._load_data(filename), self._country)
+
+    def _load_data(self, filename):
+
+        global CONTINENTS
+
+        data = pd.read_csv(filename)
+        data = data[data.Country == self._country]
+        self._continent = data.Continent.values[0]
+        data = data[['dt', 'AverageTemperature', 'year']]
+
+        if len(data) > 0:
+            if self._country in CONTINENTS:
+                raise ValueError(f'{self._country} is a continent. Choose Continent class instead.')
+            else:
+                return data
+        else:
+            raise ValueError(f'There is no such a country {self._country}.')
+
+    def train(self, Model, ModelMain=ContinentLSTM, lag=12, horizon=12, hidden_size=10, learning_rate=1e-2, epochs_main=20, epochs=10, iters=100):
+
+        try:
+            model = Model(self._country, self._continent, learning_rate=learning_rate)
+        except NotImplementedError:
+            continent = Continent(self._continent)
+            continent.train(ModelMain,
+                            lag=lag, horizon=horizon, hidden_size=hidden_size,
+                            learning_rate=learning_rate, epochs=epochs_main, iters=iters)
+            model = Model(self._name, self._continent, learning_rate=learning_rate)
+
+        data = Temperature(self._country, lag=lag, horizon=horizon, normalize=False, size=iters, by_batch=False)
+        model.fit(*data.get_dataloaders(), epochs)
+
+        return model

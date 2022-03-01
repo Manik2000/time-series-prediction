@@ -8,6 +8,12 @@ CONTINENTS = ['Asia', 'Europe', 'South America', 'Africa', 'North America', 'Oce
 MAPPING = {'AS': 'Asia', 'EU': 'Europe', 'SA': 'South America', 'AF': 'Africa', 'NA': 'North America', 'OC': 'Oceania'}
 
 
+def enough_data(df):
+
+    counts = df.groupby('Country').count().dt
+    return df[df.Country.isin(list(counts[counts >= 1450].reset_index().Country))]
+
+
 def no_colonies(df):
 
     colonies = df.loc[df.Country.str.contains(r'\([\w\s]*\)'), 'Country'].unique()
@@ -61,6 +67,7 @@ def preprocess(in_file="GlobalLandTemperaturesByCountry.csv", out_file='final_da
     df = pd.read_csv(in_file)
     df['year'] = pd.DatetimeIndex(df['dt']).year
     df.drop(columns=['AverageTemperatureUncertainty'], inplace=True)
+    df = enough_data(df)
     df = no_colonies(df)
     df = create_continents(df)
     df = interpolation(df)
