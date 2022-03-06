@@ -27,6 +27,14 @@ class Climate:
         self._name = name
         self._preprocess()
 
+        self._mean_temp = np.mean(self._data.AverageTemperature)
+        self._mean_year = np.mean(self._data.year)
+        self._mean_month = np.mean(self._data.month)
+
+        self._std_temp = np.std(self._data.AverageTemperature)
+        self._std_year = np.std(self._data.year)
+        self._std_month = np.std(self._data.month)
+
         self._start = self._data.index[0]
         self._end = self._data.index[-1]
 
@@ -79,8 +87,10 @@ class Climate:
 
     def train(self, Model, lag=12, horizon=12, hidden_size=10, learning_rate=1e-2, epochs=10, iters=100):
 
-        model = Model(self._name, lag=lag, horizon=horizon, hidden_size=hidden_size, learning_rate=learning_rate)
-        data = Temperature(self._name, lag=lag, horizon=horizon, normalize=False, size=iters, by_batch=False)
+        data = Temperature(self._name, lag=lag, horizon=horizon, normalize=True, size=iters, by_batch=False)
+        model = Model(self._name, lag=lag, horizon=horizon, hidden_size=hidden_size, learning_rate=learning_rate,
+                      mean_temp=self._mean_temp, mean_year=self._mean_year, mean_month=self._mean_month,
+                      std_temp=self._std_temp, std_year=self._std_year, std_month=self._std_month)
         model.fit(*data.get_dataloaders(), epochs)
 
         return model
@@ -89,7 +99,10 @@ class Climate:
 
         model = Model.load(self._name)
 
-        preds = model.predict(self.data().AverageTemperature.values[-model._seq_len:], horizon)
+        preds = model.predict(self.data().AverageTemperature.values[-model._seq_len:],
+                              self.data().year.values[-model._seq_len:],
+                              self.data().month.values[-model._seq_len:],
+                              horizon)
         pred_data = deepcopy(self._data.iloc[:horizon])
         pred_data.index = pd.date_range(start=self._data.index[0] + pd.DateOffset(months=1), periods=horizon, freq='M')
         pred_data['AverageTemperature'] = preds
@@ -113,7 +126,7 @@ class Climate:
         global COLORS
         global CURRENT
 
-        data = self._deriv_data(prime, start, end, smoothed, level, order, pred)
+        data = self._deriv_data(prime, start, end, smoothed, level, order)
 
         line = px.line(data, x='x', y='AverageTemperature').data[-1]
         line.name = self._name
@@ -144,9 +157,9 @@ class Climate:
         centered = np.array([ys[i + 1] - ys[i - 1] for i in range(1, len(ys) - 1)])
         return centered / 2 / h if prime == 1 else self._derivative(xs, centered / 2 / h, prime=prime - 1)
 
-    def _deriv_data(self, prime, start, end, smoothed, level, order, pred):
+    def _deriv_data(self, prime, start, end, smoothed, level, order):
 
-        data = self.data(start=start, end=end, smoothed=smoothed, level=level, order=order, pred=pred)
+        data = self.data(start=start, end=end, smoothed=smoothed, level=level, order=order)
         if prime == 0:
             return data
 
@@ -166,8 +179,7 @@ class Continent(Climate):
     def _load_data(self, filename):
 
         data = pd.read_csv(filename)
-        data = data[data.Country == self._continent][
-            ['dt', 'AverageTemperature', 'year']]
+        data = data[data.Country == self._continent][['dt', 'AverageTemperature', 'year', 'month']]
 
         if len(data) > 0:
             if self._continent not in CONTINENTS:
@@ -193,7 +205,7 @@ class Country(Climate):
         data = pd.read_csv(filename)
         data = data[data.Country == self._country]
         self._continent = data.Continent.values[0]
-        data = data[['dt', 'AverageTemperature', 'year']]
+        data = data[['dt', 'AverageTemperature', 'year', 'month']]
 
         if len(data) > 0:
             if self._country in CONTINENTS:
@@ -205,16 +217,20 @@ class Country(Climate):
 
     def train(self, Model, ModelMain=ContinentLSTM, lag=12, horizon=12, hidden_size=10, learning_rate=1e-2, epochs_main=20, epochs=10, iters=100):
 
+        data = Temperature(self._country, lag=lag, horizon=horizon, normalize=True, size=iters, by_batch=False)
         try:
-            model = Model(self._country, self._continent, learning_rate=learning_rate)
+            model = Model(self._country, self._continent, learning_rate=learning_rate,
+                          mean_temp=self._mean_temp, mean_year=self._mean_year, mean_month=self._mean_month,
+                          std_temp=self._std_temp, std_year=self._std_year, std_month=self._std_month)
         except NotImplementedError:
             continent = Continent(self._continent)
             continent.train(ModelMain,
                             lag=lag, horizon=horizon, hidden_size=hidden_size,
-                            learning_rate=learning_rate, epochs=epochs_main, iters=iters)
-            model = Model(self._name, self._continent, learning_rate=learning_rate)
+                            epochs=epochs_main, iters=iters)
+            model = Model(self._name, self._continent, learning_rate=learning_rate,
+                          mean_temp=self._mean_temp, mean_year=self._mean_year, mean_month=self._mean_month,
+                          std_temp=self._std_temp, std_year=self._std_year, std_month=self._std_month)
 
-        data = Temperature(self._country, lag=lag, horizon=horizon, normalize=False, size=iters, by_batch=False)
         model.fit(*data.get_dataloaders(), epochs)
 
         return model

@@ -1,0 +1,12 @@
+continent: Africa
+hidden_size: 30
+horizon: 120
+input_size: 3
+lag: 24
+learning_rate: 0.01
+mean_month: 6.4931297709923665
+mean_temp: 23.98961882951652
+mean_year: 1931.375572519084
+std_month: 3.4500549283460273
+std_temp: 1.7944597871676233
+std_year: 47.27066144906932

@@ -19,25 +19,23 @@ class TemperatureDataset(Dataset):
 
     def __init__(self, country, lag, horizon, normalize, start=0, size=1):
 
-        data = pd.read_csv('final_data.csv').loc[:, ['dt', 'AverageTemperature', 'Country']]
+        data = pd.read_csv('final_data.csv').loc[:, ['dt', 'AverageTemperature', 'Country', 'year', 'month']]
         data_country = data[data['Country'] == country].sort_values('dt')
         data_country = data_country.iloc[int(start*len(data_country)):int((start+size)*len(data_country))]
         xy = np.array(data_country.AverageTemperature, dtype=np.float32)
+        year = np.array(data_country.year, dtype=np.float32)
+        month = np.array(data_country.month, dtype=np.float32)
         records = len(xy)
         self._samples = records - horizon - lag
-        self._x = np.array([xy[i:i+lag].reshape(-1, 1) for i in range(self._samples)])
-        self._y = np.array([xy[i:i+horizon].reshape(-1, 1) for i in range(lag, records-horizon)])
+        self._x = np.array([np.transpose([xy[i:i+lag], year[i:i+lag], month[i:i+lag]]) for i in range(self._samples)])
+        self._y = np.array([xy[i:i+horizon].reshape(-1, 1) for i in range(lag, records - horizon)])
 
-        self._to_tensor = ToTensor() 
-        self._normalize = normalize
-        self._normalizer = Normalize(np.mean(xy), np.std(xy))
+        self._to_tensor = ToTensor()
 
     def __getitem__(self, idx):
 
         x, y = self._to_tensor((self._x[idx], self._y[idx]))
-        if self._normalize:
-            x, y = self._normalizer(x), self._normalizer(y)
-        
+
         return x, y
 
     def __len__(self):
@@ -66,7 +64,7 @@ class Temperature:
 
         dataset = TemperatureDataset(self._name, self._lag, self._horizon, self._normalize, start=start, size=size)
         batch_size = len(dataset) if not self._size else self._size if self._by_batch else ceil(len(dataset) / self._size)
-        return len(dataset), DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, num_workers=self._workers)
+        return len(dataset), DataLoader(dataset=dataset, batch_size=batch_size, shuffle=False, num_workers=self._workers)
 
     def head(self, rows=10):
 

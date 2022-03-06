@@ -1,0 +1,8 @@
+continent: Africa
+hidden_size: 120
+horizon: 60
+input_size: 1
+lag: 24
+learning_rate: 0.001
+mean: 23.98961882951652
+std: 1.7944597871676233

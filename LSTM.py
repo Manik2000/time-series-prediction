@@ -7,7 +7,8 @@ import pytorch_lightning as pl
 
 class LSTM(pl.LightningModule):
 
-    def __init__(self, lag, horizon, hidden_size, input_size, learning_rate):
+    def __init__(self, lag, horizon, hidden_size, input_size, learning_rate,
+                 mean_temp, mean_year, mean_month, std_temp, std_year, std_month):
 
         super(LSTM, self).__init__()
 
@@ -20,46 +21,47 @@ class LSTM(pl.LightningModule):
         self._lstm_cell = nn.LSTMCell(self._input_size, self._hidden_size)
         self._linear = nn.Linear(self._hidden_size, 1)
 
+        self._mean_temp = mean_temp
+        self._mean_year = mean_year
+        self._mean_month = mean_month
+
+        self._std_temp = std_temp
+        self._std_year = std_year
+        self._std_month = std_month
+
     def forward(self, x, horizon=None):
 
-        hi = torch.zeros(x.size(0), self._hidden_size)
-        ci = torch.zeros(x.size(0), self._hidden_size)
+        hi = torch.randn(x.size(0), self._hidden_size)
+        ci = torch.randn(x.size(0), self._hidden_size)
 
+        x[:, :, 0] = x[:, :, 0] - self._mean_temp
+        x[:, :, 1] = (x[:, :, 1] - self._mean_year) / self._std_year
+        x[:, :, 2] = (x[:, :, 2] - self._mean_month) / self._std_month
         outputs = []
         if horizon:
-            for _ in range(horizon // self._seq_len + 1):
+            for i in range(horizon // self._seq_len + 1):
                 for month in range(self._seq_len):
-                    hi, ci = self._lstm_cell(x[:, month, :], (hi, ci))
+                    hi, ci = self._lstm_cell(x[:, month+self._seq_len*i, :], (hi, ci))
                     outputs.append(self._linear(hi))
-                x = torch.stack(outputs[-self._seq_len:], dim=1)
-            return torch.stack(outputs[:horizon], dim=1)
+                x = torch.cat((x,
+                               torch.stack((torch.cat(outputs[-self._seq_len:], dim=1),
+                                            x[:, -self._seq_len:, 1] + self._seq_len // 12 / self._std_year,
+                                            x[:, -self._seq_len:, 2]),
+                                           dim=-1)),
+                              dim=1)
+            return torch.stack(outputs[:horizon], dim=1) + self._mean_temp
         else:
             for i in range(self._output_size // self._seq_len + 1):
                 for month in range(self._seq_len):
-                    hi, ci = self._lstm_cell(x[:, month, :], (hi, ci))
+                    hi, ci = self._lstm_cell(x[:, month+self._seq_len*i, :], (hi, ci))
                     outputs.append(self._linear(hi))
-                x = torch.stack(outputs[-self._seq_len:], dim=1)
-            return torch.stack(outputs[:self._output_size], dim=1)
-
-    def forwardi(self, x, horizon=None):
-
-        hi = torch.zeros(x.size(0), self._hidden_size)
-        ci = torch.zeros(x.size(0), self._hidden_size)
-
-        for i in range(self._seq_len):
-            hi, ci = self._in_cell(x[:, i, :], (hi, ci))
-
-        outputs = []
-        if horizon:
-            for i in range(horizon):
-                hi, ci = self._out_cell(torch.empty((x.size(0), 0)), (hi, ci))
-                outputs.append(self._linear(hi))
-        else:
-            for i in range(self._output_size):
-                hi, ci = self._out_cell(torch.empty((x.size(0), 0)), (hi, ci))
-                outputs.append(self._linear(hi))
-
-        return torch.stack(outputs, dim=1)
+                x = torch.cat((x,
+                               torch.stack((torch.cat(outputs[-self._seq_len:], dim=1),
+                                            x[:, -self._seq_len:, 1] + self._seq_len // 12 / self._std_year,
+                                            x[:, -self._seq_len:, 2]),
+                                           dim=-1)),
+                              dim=1)
+            return torch.stack(outputs[:self._output_size], dim=1) + self._mean_temp
 
     def training_step(self, batch, batch_idx):
 
@@ -73,7 +75,7 @@ class LSTM(pl.LightningModule):
     def configure_optimizers(self):
 
         optimizer = torch.optim.Adam(self.parameters(), lr=self._learning_rate)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=1, threshold=.01)
 
         return {'optimizer': optimizer, 'lr_scheduler': {'scheduler': scheduler, 'monitor': 'val_loss'}}
 
@@ -84,6 +86,7 @@ class LSTM(pl.LightningModule):
         loss = nn.MSELoss()(y_hat, y)
 
         self.log("val_loss", loss, on_epoch=True)
+        return loss
 
     def test_step(self, batch, batch_idx):
 
@@ -92,21 +95,27 @@ class LSTM(pl.LightningModule):
         loss = nn.MSELoss()(y_hat, y)
 
         self.log('test_loss', loss)
+        return loss
 
-    def predict(self, x, horizon):
+    def predict(self, x, year, month, horizon):
 
         x = torch.from_numpy(np.array(x.reshape(1, -1, 1), dtype=np.float32))
+        year = torch.from_numpy(np.array(year.reshape(1, -1, 1), dtype=np.float32))
+        month = torch.from_numpy(np.array(month.reshape(1, -1, 1), dtype=np.float32))
         torch.set_grad_enabled(False)
         self.eval()
+        y = self(torch.cat((x, year, month), dim=2), horizon=horizon).detach().numpy()
 
-        return self(x, horizon=horizon).detach().numpy().reshape(-1)
+        return y.reshape(-1)
 
 
 class ContinentLSTM(LSTM):
 
-    def __init__(self, continent, lag=1, horizon=1, hidden_size=1, input_size=1, learning_rate=1e-2):
+    def __init__(self, continent, lag=1, horizon=1, hidden_size=1, input_size=3, learning_rate=1e-2,
+                 mean_temp=0, mean_year=0, mean_month=0, std_temp=1, std_year=1, std_month=1):
 
-        super(ContinentLSTM, self).__init__(lag, horizon, hidden_size, input_size, learning_rate)
+        super(ContinentLSTM, self).__init__(lag, horizon, hidden_size, input_size, learning_rate,
+                                            mean_temp, mean_year, mean_month, std_temp, std_year, std_month)
 
         self._continent = continent
         self.save_hyperparameters()
@@ -136,10 +145,21 @@ class ContinentLSTM(LSTM):
         except FileNotFoundError:
             raise NotImplementedError(f'There is no fitted model for {continent}.')
 
+    def validation_epoch_end(self, loss):
+
+        with open(os.path.join(os.getcwd(), 'loss', 'validation', 'continent', 'LSTM', f'{self._continent}.txt'), 'a') as results:
+            results.write(f'{loss}\n')
+
+    def test_epoch_end(self, loss):
+
+        with open(os.path.join(os.getcwd(), 'loss', 'test', 'LSTM', 'continent.csv'), 'a') as results:
+            results.write(f'{self._continent},{loss}\n')
+
 
 class CountryLSTM(LSTM):
 
-    def __init__(self, country, continent, learning_rate=1e-2):
+    def __init__(self, country, continent, learning_rate=1e-2,
+                 mean_temp=0, mean_year=0, mean_month=0, std_temp=1, std_year=1, std_month=1):
 
         self._country = country
         self._continent = continent
@@ -147,7 +167,8 @@ class CountryLSTM(LSTM):
         layers = list(continental.children())
 
         super(CountryLSTM, self).__init__(continental._seq_len, continental._output_size, continental._hidden_size,
-                                          continental._input_size, learning_rate)
+                                          continental._input_size, learning_rate,
+                                          mean_temp, mean_year, mean_month, std_temp, std_year, std_month)
 
         self.save_hyperparameters()
 
@@ -191,3 +212,13 @@ class CountryLSTM(LSTM):
                 os.getcwd(), 'models', 'LSTM', 'country', f'{country}.ckpt'))
         except FileNotFoundError:
             raise NotImplementedError(f'There is no fitted model for {country}.')
+
+    def validation_epoch_end(self, loss):
+
+        with open(os.path.join(os.getcwd(), 'loss', 'validation', 'country', 'LSTM', f'{self._country}.txt'), 'a') as results:
+            results.write(f'{loss}\n')
+
+    def test_epoch_end(self, loss):
+
+        with open(os.path.join(os.getcwd(), 'loss', 'test', 'LSTM', 'country.csv'), 'a') as results:
+            results.write(f'{self._continent},{self._country},{loss}\n')

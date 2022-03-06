@@ -1,0 +1,12 @@
+continent: South America
+hidden_size: 30
+horizon: 120
+input_size: 3
+lag: 24
+learning_rate: 0.01
+mean_month: 6.493087557603687
+mean_temp: 21.82326318484386
+mean_year: 1931.8755760368663
+std_month: 3.4500426084345808
+std_temp: 1.5698150178713266
+std_year: 46.98198696652342

@@ -66,6 +66,7 @@ def preprocess(in_file="GlobalLandTemperaturesByCountry.csv", out_file='final_da
 
     df = pd.read_csv(in_file)
     df['year'] = pd.DatetimeIndex(df['dt']).year
+    df['month'] = pd.DatetimeIndex(df['dt']).month
     df.drop(columns=['AverageTemperatureUncertainty'], inplace=True)
     df = enough_data(df)
     df = no_colonies(df)
