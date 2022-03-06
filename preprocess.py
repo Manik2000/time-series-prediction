@@ -2,10 +2,15 @@ import pycountry_convert as pc
 import pandas as pd
 import numpy as np
 import re
+import pycountry
 
 
 CONTINENTS = ['Asia', 'Europe', 'South America', 'Africa', 'North America', 'Oceania']
 MAPPING = {'AS': 'Asia', 'EU': 'Europe', 'SA': 'South America', 'AF': 'Africa', 'NA': 'North America', 'OC': 'Oceania'}
+
+COUNTRIES = {}
+for country in pycountry.countries:
+    COUNTRIES[country.name] = country.alpha_3
 
 
 def enough_data(df):
@@ -51,6 +56,25 @@ def create_continents(df):
     return df
 
 
+def _adjust_iso_alpha(df):
+
+    df.loc[df['Country'] == 'Russia', 'iso_alpha'] = 'RUS'
+    df.loc[df['Country'] == 'Iran', 'iso_alpha'] = 'IRN'
+    df.loc[df['Country'] == 'Congo (Democratic Republic Of The)', 'iso_alpha'] = 'COD'
+
+    return df
+
+
+def get_iso_alpha(df):
+
+    global COUNTRIES
+
+    df['iso_alpha'] = df['Country'].map(COUNTRIES)
+    df = _adjust_iso_alpha(df)
+
+    return df
+
+
 def interpolation(df):
 
     for country in df["Country"].unique():
@@ -72,6 +96,7 @@ def preprocess(in_file="GlobalLandTemperaturesByCountry.csv", out_file='final_da
     df = no_colonies(df)
     df = create_continents(df)
     df = interpolation(df)
+    df = get_iso_alpha(df)
     df.dropna(inplace=True)
     df.to_csv(out_file, index=False)
 
