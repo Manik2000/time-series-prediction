@@ -35,8 +35,9 @@ class LSTM(pl.LightningModule):
         ci = torch.randn(x.size(0), self._hidden_size)
 
         x[:, :, 0] = x[:, :, 0] - self._mean_temp
-        x[:, :, 1] = (x[:, :, 1] - self._mean_year) / self._std_year
-        x[:, :, 2] = (x[:, :, 2] - self._mean_month) / self._std_month
+        #x[:, :, 1] = (x[:, :, 1] - self._mean_year) / self._std_year
+        x[:, :, 1] = (x[:, :, 2] - self._mean_month) / self._std_month
+        x = x[:, :, :-1]
         outputs = []
         if horizon:
             for i in range(horizon // self._seq_len + 1):
@@ -57,8 +58,8 @@ class LSTM(pl.LightningModule):
                     outputs.append(self._linear(hi))
                 x = torch.cat((x,
                                torch.stack((torch.cat(outputs[-self._seq_len:], dim=1),
-                                            x[:, -self._seq_len:, 1] + self._seq_len // 12 / self._std_year,
-                                            x[:, -self._seq_len:, 2]),
+                                            #x[:, -self._seq_len:, 1] + self._seq_len // 12 / self._std_year,
+                                            x[:, -self._seq_len:, 1]),
                                            dim=-1)),
                               dim=1)
             return torch.stack(outputs[:self._output_size], dim=1) + self._mean_temp
@@ -111,7 +112,7 @@ class LSTM(pl.LightningModule):
 
 class ContinentLSTM(LSTM):
 
-    def __init__(self, continent, lag=1, horizon=1, hidden_size=1, input_size=3, learning_rate=1e-2,
+    def __init__(self, continent, lag=1, horizon=1, hidden_size=1, input_size=2, learning_rate=1e-2,
                  mean_temp=0, mean_year=0, mean_month=0, std_temp=1, std_year=1, std_month=1):
 
         super(ContinentLSTM, self).__init__(lag, horizon, hidden_size, input_size, learning_rate,
