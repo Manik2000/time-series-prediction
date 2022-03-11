@@ -45,9 +45,8 @@ def analysis_page():
     head_cols[1].markdown("### Correlation")
     head_cols[1].markdown(f"##### {round(country.correlation()['correlation'], 3)}")
 
-    start = st.slider('Start Year', df.year.min(), df.year.max()-1)
-    end = st.slider('End Year', start+1, df.year.max(), df.year.max())
-    start, end = str(start), str(end)
+    years = st.slider('Years', df.year.min(), df.year.max(), (df.year.min(), df.year.max()))
+    start, end = tuple(map(str, years))
 
     cols = st.columns(2)
 
