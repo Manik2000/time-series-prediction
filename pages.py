@@ -64,7 +64,7 @@ def analysis_page():
         st.plotly_chart(country.plot(fig, start=start, end=end, smoothed=True, order=order), use_container_width=True)
 
     st.markdown("### Inflection Points")
-    for inflection in country.inflection_points(start=start, end=end, order=order):
+    for inflection in country.inflection_points(order=order):
         st.markdown(f"##### {inflection.strftime('%b-%Y')}")
 
 

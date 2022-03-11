@@ -46,15 +46,11 @@ class Climate:
         self._data.index.freq = self._data.index.inferred_freq
         self._data.drop(columns='dt', inplace=True)
 
-    def inflection_points(self, start=None, end=None, level=None, order=3, return_idx=False, eps=1e-9):
+    def inflection_points(self, level=None, order=3, return_idx=False, eps=1e-9):
 
         data = self._deriv_data(1, None, None, True, level, order).AverageTemperature.values
         indices = np.argsort([(data[i] - data[i - 1]) * (data[i + 1] - data[i])
                               for i in range(1, len(data) - 1)])[:np.max((0, order-2))]
-
-        start, end = self._endpoints(start, end)
-        start, end = date(int(start), 1, 1), date(int(end), 1, 1)
-        indices = list(filter(lambda idx: start <= self._to_date(idx) <= end, indices))
 
         if return_idx:
             return indices
@@ -139,7 +135,7 @@ class Climate:
         #line.line['color'] = COLORS[CURRENT % len(COLORS)]
 
         if inflection:
-            for point in self.inflection_points(start=start, end=end, level=level, order=order, return_idx=True):
+            for point in self.inflection_points(level=level, order=order, return_idx=True):
                 fig.add_vline(x=point,
                               #line_color=COLORS[CURRENT % len(COLORS)],
                               line_width=1)
