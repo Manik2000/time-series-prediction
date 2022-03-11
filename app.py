@@ -1,7 +1,9 @@
 import streamlit as st
-from pages import lstm_page, eda_page, arima_page, home_page, xgboost_page, map_page
+from pages import lstm_page, eda_page, arima_page, home_page, xgboost_page, analysis_page, map_page
 from streamlit_utils import get_markdown_text
 
+
+st.set_page_config(layout="wide")
 
 st.markdown('''
 <style>
@@ -17,6 +19,7 @@ mapping = {
     "Arima": arima_page,
     "XGBoost": xgboost_page,
     "LSTM": lstm_page,
+    "Analysis": analysis_page,
     "Map tests (temporary page)": map_page,
 }
 

@@ -11,11 +11,12 @@ from statsmodels.tsa.seasonal import STL
 from scipy.stats import pearsonr
 from scipy.misc import derivative
 from scipy.optimize import fsolve
+from datetime import date
 from LSTM import ContinentLSTM
 
 
-COLORS = px.colors.qualitative.Dark24
-CURRENT = 0
+#COLORS = px.colors.qualitative.Dark24
+#CURRENT = 0
 CONTINENTS = ['Asia', 'Europe', 'South America', 'Africa', 'North America', 'Oceania']
 
 
@@ -45,20 +46,24 @@ class Climate:
         self._data.index.freq = self._data.index.inferred_freq
         self._data.drop(columns='dt', inplace=True)
 
-    def inflection_points(self, start=None, end=None, level=None, order=3, return_idx=False):
+    def inflection_points(self, start=None, end=None, level=None, order=3, return_idx=False, eps=1e-9):
 
-        data = self._deriv_data(1, start, end, True, level, order).AverageTemperature.values
-        indices = np.where([(data[i] - data[i-1]) * (data[i + 1] - data[i]) < 0 for i in range(1, len(data)-1)])[0]
+        data = self._deriv_data(1, None, None, True, level, order).AverageTemperature.values
+        indices = np.argsort([(data[i] - data[i - 1]) * (data[i + 1] - data[i])
+                              for i in range(1, len(data) - 1)])[:np.max((0, order-2))]
+
+        start, end = self._endpoints(start, end)
+        start, end = date(int(start), 1, 1), date(int(end), 1, 1)
+        indices = list(filter(lambda idx: start <= self._to_date(idx) <= end, indices))
 
         if return_idx:
             return indices
         else:
-            return np.array([self._to_date(idx) for idx in indices])
+            return np.sort(np.array([self._to_date(idx) for idx in indices]))
 
-    def correlation(self, decomposed=False, seasonal=3):
+    def correlation(self, smoothed=False):
 
-        corr = Xi(self._data.x, self.data(decomposed=decomposed,                       
-                                          seasonal=seasonal).AverageTemperature)
+        corr = Xi(self._data.x, self.data(smoothed=smoothed).AverageTemperature)
         return dict(correlation=corr.correlation, p_value=corr.pval_asymptotic())
 
     def _endpoints(self, start, end):
@@ -113,9 +118,9 @@ class Climate:
     def data(self, start=None, end=None, smoothed=False, level=None, order=1):
 
         start, end = self._endpoints(start, end)
-        data = self._data.loc[start:end, :]
+        data = self._data
 
-        return self._smooth(data, level, order) if smoothed else data
+        return self._smooth(data, level, order).loc[start:end, :] if smoothed else data.loc[start:end, :]
 
     def view(self, rows=10):
 
@@ -131,11 +136,13 @@ class Climate:
         line = px.line(data, x='x', y='AverageTemperature').data[-1]
         line.name = self._name
         line.showlegend = True
-        line.line['color'] = COLORS[CURRENT % len(COLORS)]
+        #line.line['color'] = COLORS[CURRENT % len(COLORS)]
 
         if inflection:
             for point in self.inflection_points(start=start, end=end, level=level, order=order, return_idx=True):
-                fig.add_vline(x=point, line_color=COLORS[CURRENT % len(COLORS)], line_width=1)
+                fig.add_vline(x=point,
+                              #line_color=COLORS[CURRENT % len(COLORS)],
+                              line_width=1)
 
         fig.add_trace(line)
         fig.update_layout(
@@ -147,7 +154,7 @@ class Climate:
         )
         fig.update_xaxes(tickangle=45)
 
-        CURRENT += 1
+        #CURRENT += 1
 
         return fig
 
