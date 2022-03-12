@@ -7,7 +7,8 @@ import plotly.express as px
 from plotly.graph_objects import Figure
 from streamlit_utils import get_markdown_text
 from Climate import Country
-from LSTM import CountryLSTM
+from LSTM import LSTM
+from Baseline import Baseline
 
 
 def home_page():
@@ -45,10 +46,9 @@ def analysis_page():
 
     head_cols = st.columns([3, 1])
 
-    option = head_cols[0].selectbox('Select Country',
-                          df.Country.unique())
+    option = head_cols[0].selectbox('Select Country', df.Country.unique())
     country = Country(option)
-    head_cols[1].markdown("### Correlation")
+    head_cols[1].markdown("### Xi Correlation")
     head_cols[1].markdown(f"##### {round(country.correlation()['correlation'], 3)}")
 
     years = st.slider('Years', df.year.min(), 2100, (df.year.min(), df.year.max()))
@@ -57,17 +57,15 @@ def analysis_page():
     cols = st.columns(2)
 
     with cols[0]:
-        st.markdown("#")
-        st.markdown("##")
-        st.markdown("##")
+        model = st.selectbox('Select Model', ['Baseline', 'LSTM'])
         fig = Figure()
-        st.plotly_chart(country.plot(fig, CountryLSTM, start=start, end=end),
+        st.plotly_chart(country.plot(fig, eval(model), start=start, end=end),
                         use_container_width=True)
 
     with cols[1]:
         order = st.slider("Regression Order", 1, 10, 3)
         fig = Figure()
-        st.plotly_chart(country.plot(fig, CountryLSTM, start=start, end=end, smoothed=True, order=order),
+        st.plotly_chart(country.plot(fig, eval(model), start=start, end=end, smoothed=True, order=order),
                         use_container_width=True)
 
     st.markdown("### Inflection Points")

@@ -5,12 +5,12 @@ import torch.nn as nn
 import pytorch_lightning as pl
 
 
-class LSTM(pl.LightningModule):
+class MainLSTM(pl.LightningModule):
 
     def __init__(self, lag, horizon, hidden_size, input_size, learning_rate,
                  mean_temp, mean_year, mean_month, std_temp, std_year, std_month):
 
-        super(LSTM, self).__init__()
+        super(MainLSTM, self).__init__()
 
         self._input_size = input_size
         self._seq_len = lag
@@ -109,9 +109,9 @@ class LSTM(pl.LightningModule):
         return y.reshape(-1)
 
 
-class ContinentLSTM(LSTM):
+class ContinentLSTM(MainLSTM):
 
-    def __init__(self, continent, lag=1, horizon=1, hidden_size=1, input_size=3, learning_rate=1e-2,
+    def __init__(self, continent, lag=24, horizon=120, hidden_size=30, input_size=3, learning_rate=1e-3,
                  mean_temp=0, mean_year=0, mean_month=0, std_temp=1, std_year=1, std_month=1):
 
         super(ContinentLSTM, self).__init__(lag, horizon, hidden_size, input_size, learning_rate,
@@ -148,17 +148,17 @@ class ContinentLSTM(LSTM):
     def validation_epoch_end(self, loss):
 
         with open(os.path.join(os.getcwd(), 'loss', 'validation', 'continent', 'LSTM', f'{self._continent}.txt'), 'a') as results:
-            results.write(f'{loss}\n')
+            results.write(f'{torch.mean(loss)}\n')
 
     def test_epoch_end(self, loss):
 
         with open(os.path.join(os.getcwd(), 'loss', 'test', 'LSTM', 'continent.csv'), 'a') as results:
-            results.write(f'{self._continent},{loss}\n')
+            results.write(f'{self._continent},{torch.mean(loss)}\n')
 
 
-class CountryLSTM(LSTM):
+class LSTM(MainLSTM):
 
-    def __init__(self, country, continent, learning_rate=1e-2,
+    def __init__(self, country, continent, learning_rate=1e-4,
                  mean_temp=0, mean_year=0, mean_month=0, std_temp=1, std_year=1, std_month=1):
 
         self._country = country
@@ -166,7 +166,7 @@ class CountryLSTM(LSTM):
         continental = self._load_main()
         layers = list(continental.children())
 
-        super(CountryLSTM, self).__init__(continental._seq_len, continental._output_size, continental._hidden_size,
+        super(LSTM, self).__init__(continental._seq_len, continental._output_size, continental._hidden_size,
                                           continental._input_size, learning_rate,
                                           mean_temp, mean_year, mean_month, std_temp, std_year, std_month)
 

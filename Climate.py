@@ -12,7 +12,7 @@ from scipy.stats import pearsonr
 from scipy.misc import derivative
 from scipy.optimize import fsolve
 from datetime import date
-from LSTM import ContinentLSTM
+from LSTM import LSTM, ContinentLSTM
 
 
 #COLORS = px.colors.qualitative.Dark24
@@ -90,7 +90,7 @@ class Climate:
 
         return copied
 
-    def train(self, Model, lag=12, horizon=12, hidden_size=10, learning_rate=1e-2, epochs=10, iters=100):
+    def train(self, Model, lag=24, horizon=120, hidden_size=30, learning_rate=1e-3, epochs=10, iters=100):
 
         data = Temperature(self._name, lag=lag, horizon=horizon, normalize=True, size=iters, by_batch=False)
         model = Model(self._name, lag=lag, horizon=horizon, hidden_size=hidden_size, learning_rate=learning_rate,
@@ -102,12 +102,21 @@ class Climate:
 
     def predict(self, Model, horizon):
 
-        model = Model.load(self._name)
+        try:
+            model = Model.load(self._name)
+        except NotImplementedError:
+            self.train(Model)
+            model = Model.load(self._name)
 
-        preds = model.predict(self._data.AverageTemperature.values[-model._seq_len:],
-                              self._data.year.values[-model._seq_len:],
-                              self._data.month.values[-model._seq_len:],
-                              horizon)
+        if isinstance(Model, LSTM):
+            preds = model.predict(self._data.AverageTemperature.values[-model._seq_len:],
+                                  self._data.year.values[-model._seq_len:],
+                                  self._data.month.values[-model._seq_len:],
+                                  horizon)
+        else:
+            preds = model.predict(self._data.AverageTemperature.values[-model._seq_len:],
+                                  horizon)
+            
         pred_data = deepcopy(self._data.iloc[:horizon])
         pred_data.index = pd.date_range(start=self._end + pd.DateOffset(months=1), periods=horizon, freq='M')
         pred_data['year'] = pred_data.index.year
@@ -233,22 +242,28 @@ class Country(Climate):
         else:
             raise ValueError(f'There is no such a country {self._country}.')
 
-    def train(self, Model, ModelMain=ContinentLSTM, lag=12, horizon=12, hidden_size=10, learning_rate=1e-2, epochs_main=20, epochs=10, iters=100):
+    def train(self, Model, ModelMain=ContinentLSTM, lag=24, horizon=120, hidden_size=30, learning_rate=1e-3, epochs_main=20, epochs=10, iters=100):
 
-        data = Temperature(self._country, lag=lag, horizon=horizon, normalize=True, size=iters, by_batch=False)
-        try:
-            model = Model(self._country, self._continent, learning_rate=learning_rate,
-                          mean_temp=self._mean_temp, mean_year=self._mean_year, mean_month=self._mean_month,
-                          std_temp=self._std_temp, std_year=self._std_year, std_month=self._std_month)
-        except NotImplementedError:
-            continent = Continent(self._continent)
-            continent.train(ModelMain,
-                            lag=lag, horizon=horizon, hidden_size=hidden_size,
-                            epochs=epochs_main, iters=iters)
-            model = Model(self._name, self._continent, learning_rate=learning_rate,
-                          mean_temp=self._mean_temp, mean_year=self._mean_year, mean_month=self._mean_month,
-                          std_temp=self._std_temp, std_year=self._std_year, std_month=self._std_month)
+        if isinstance(Model, LSTM):
+            data = Temperature(self._country, lag=lag, horizon=horizon, normalize=True, size=iters, by_batch=False)
+            try:
+                model = Model(self._country, self._continent, learning_rate=learning_rate,
+                              mean_temp=self._mean_temp, mean_year=self._mean_year, mean_month=self._mean_month,
+                              std_temp=self._std_temp, std_year=self._std_year, std_month=self._std_month)
+            except NotImplementedError:
+                continent = Continent(self._continent)
+                continent.train(ModelMain,
+                                lag=lag, horizon=horizon, hidden_size=hidden_size,
+                                epochs=epochs_main, iters=iters)
+                model = Model(self._name, self._continent, learning_rate=learning_rate,
+                              mean_temp=self._mean_temp, mean_year=self._mean_year, mean_month=self._mean_month,
+                              std_temp=self._std_temp, std_year=self._std_year, std_month=self._std_month)
 
-        model.fit(*data.get_dataloaders(), epochs)
+            model.fit(*data.get_dataloaders(), epochs)
+        else:
+            data = self._data.AverageTemperature.values
+            train_data, test_data = data[:-horizon], data[-horizon:]
+            model = Model(self._country, self._continent)
+            model.fit(train_data, test_data)
 
         return model
