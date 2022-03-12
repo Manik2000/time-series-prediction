@@ -1,10 +1,13 @@
+import os
 import streamlit as st
 import numpy as np
 import altair as alt
 import pandas as pd
+import plotly.express as px
 from plotly.graph_objects import Figure
 from streamlit_utils import get_markdown_text
 from Climate import Country
+from LSTM import CountryLSTM
 
 
 def home_page():
@@ -15,21 +18,24 @@ def eda_page():
     st.markdown(get_markdown_text("eda_page"))
 
 
-def arima_page():
-    st.markdown(get_markdown_text("arima_page"))
-    x = np.linspace(-2, 2, 500)
-    y = x ** 2
-    df = pd.DataFrame({'x': x, 'y': y})
-    p = alt.Chart(df).mark_line().encode(x='x', y='y')
-    st.altair_chart(p)
+def models_page():
+    st.markdown(get_markdown_text('models_page'))
 
+    path = os.path.join(os.getcwd(), "loss", "test", "country")
+    models = ['LSTM', 'Baseline']  # to add later
 
-def xgboost_page():
-    st.markdown(get_markdown_text("xgboost_page"))
+    def read_loss(model):
+        df = pd.read_csv(os.path.join(path, f'{model}.csv'))
+        df['Model'] = model
 
+        return df
 
-def lstm_page():
-    st.markdown(get_markdown_text("lstm_page"))
+    merge_loss = lambda models: pd.concat([read_loss(model) for model in models])
+
+    df = merge_loss(models)
+
+    st.plotly_chart(px.box(df, x='Model', y="Loss", color="Continent"),
+                    use_container_width=True)
 
 
 def analysis_page():
@@ -45,7 +51,7 @@ def analysis_page():
     head_cols[1].markdown("### Correlation")
     head_cols[1].markdown(f"##### {round(country.correlation()['correlation'], 3)}")
 
-    years = st.slider('Years', df.year.min(), df.year.max(), (df.year.min(), df.year.max()))
+    years = st.slider('Years', df.year.min(), 2100, (df.year.min(), df.year.max()))
     start, end = tuple(map(str, years))
 
     cols = st.columns(2)
@@ -55,12 +61,14 @@ def analysis_page():
         st.markdown("##")
         st.markdown("##")
         fig = Figure()
-        st.plotly_chart(country.plot(fig, start=start, end=end), use_container_width=True)
+        st.plotly_chart(country.plot(fig, CountryLSTM, start=start, end=end),
+                        use_container_width=True)
 
     with cols[1]:
         order = st.slider("Regression Order", 1, 10, 3)
         fig = Figure()
-        st.plotly_chart(country.plot(fig, start=start, end=end, smoothed=True, order=order), use_container_width=True)
+        st.plotly_chart(country.plot(fig, CountryLSTM, start=start, end=end, smoothed=True, order=order),
+                        use_container_width=True)
 
     st.markdown("### Inflection Points")
     for inflection in country.inflection_points(order=order):

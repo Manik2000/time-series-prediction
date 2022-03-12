@@ -64,10 +64,14 @@ class Climate:
 
     def _endpoints(self, start, end):
 
-        if not start:
+        if start:
+            start = np.max((self._start, date(int(start), 1, 1)))
+        else:
             start = self._start
 
-        if not end:
+        if end:
+            end = date(int(end), 12, 1)
+        else:
             end = self._end
 
         return start, end
@@ -100,21 +104,26 @@ class Climate:
 
         model = Model.load(self._name)
 
-        preds = model.predict(self.data().AverageTemperature.values[-model._seq_len:],
-                              self.data().year.values[-model._seq_len:],
-                              self.data().month.values[-model._seq_len:],
+        preds = model.predict(self._data.AverageTemperature.values[-model._seq_len:],
+                              self._data.year.values[-model._seq_len:],
+                              self._data.month.values[-model._seq_len:],
                               horizon)
         pred_data = deepcopy(self._data.iloc[:horizon])
-        pred_data.index = pd.date_range(start=self._data.index[0] + pd.DateOffset(months=1), periods=horizon, freq='M')
+        pred_data.index = pd.date_range(start=self._end + pd.DateOffset(months=1), periods=horizon, freq='M')
+        pred_data['year'] = pred_data.index.year
+        pred_data['month'] = pred_data.index.month
+        pred_data['x'] += len(self._data)
         pred_data['AverageTemperature'] = preds
-        self._data = pd.concat([self._data, pred_data])
 
         return pred_data
 
-    def data(self, start=None, end=None, smoothed=False, level=None, order=1):
+    def data(self, Model=None, start=None, end=None, smoothed=False, level=None, order=1):
 
         start, end = self._endpoints(start, end)
         data = self._data
+        horizon = int((end.year - self._end.year) * 12 + end.month - self._end.month)
+        if Model and horizon > 0:
+            data = pd.concat([data, self.predict(Model, horizon)])
 
         return self._smooth(data, level, order).loc[start:end, :] if smoothed else data.loc[start:end, :]
 
@@ -122,17 +131,22 @@ class Climate:
 
         return self.data(end=list(self._data.index)[rows-1])
 
-    def plot(self, fig, pred=None, prime=0, start=None, end=None, year_step=10, smoothed=False, level=None, order=1, inflection=False):
+    def plot(self, fig, Model, pred=None, prime=0, start=None, end=None, year_step=10, smoothed=False, level=None, order=1, inflection=False):
 
         global COLORS
         global CURRENT
 
-        data = self._deriv_data(prime, start, end, smoothed, level, order)
+        data = self._deriv_data(prime, start, end, smoothed, level, order, Model=Model)
 
-        line = px.line(data, x='x', y='AverageTemperature').data[-1]
+        line = px.line(data[:self._end+pd.DateOffset(months=1)], x='x', y='AverageTemperature').data[-1]
         line.name = self._name
         line.showlegend = True
-        #line.line['color'] = COLORS[CURRENT % len(COLORS)]
+        line.line['color'] = 'blue'
+
+        pred_line = px.line(data[self._end+pd.DateOffset(months=1):], x='x', y='AverageTemperature').data[-1]
+        pred_line.name = 'Prediction'
+        pred_line.showlegend = True
+        pred_line.line['color'] = 'red'
 
         if inflection:
             for point in self.inflection_points(level=level, order=order, return_idx=True):
@@ -141,6 +155,7 @@ class Climate:
                               line_width=1)
 
         fig.add_trace(line)
+        fig.add_trace(pred_line)
         fig.update_layout(
             xaxis=dict(
                 tickmode='array',
@@ -160,9 +175,9 @@ class Climate:
         centered = np.array([ys[i + 1] - ys[i - 1] for i in range(1, len(ys) - 1)])
         return centered / 2 / h if prime == 1 else self._derivative(xs, centered / 2 / h, prime=prime - 1)
 
-    def _deriv_data(self, prime, start, end, smoothed, level, order):
+    def _deriv_data(self, prime, start, end, smoothed, level, order, Model=None):
 
-        data = self.data(start=start, end=end, smoothed=smoothed, level=level, order=order)
+        data = self.data(Model=Model, start=start, end=end, smoothed=smoothed, level=level, order=order)
         if prime == 0:
             return data
 
