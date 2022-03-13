@@ -46,7 +46,8 @@ class Arima:
         return self._model.predict_in_sample() + self._trend + self._season
     
     def save(self, label):
-        joblib.dump(self._model, "arima_" + label + ".pkl")
+        joblib.dump(self._model, label + ".pkl")
     
     def load(self, label):
-        self._model = joblib.load("arima_" + label + ".pkl")
+        self._model = joblib.load(label + ".pkl")
+        

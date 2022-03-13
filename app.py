@@ -1,4 +1,5 @@
 import streamlit as st
+from PIL import Image
 from pages import models_page, eda_page, home_page, analysis_page, map_page
 from streamlit_utils import get_markdown_text
 
@@ -30,7 +31,12 @@ def show_app():
     st.sidebar.subheader("Menu")
     for t in mapping.keys():    
         st.sidebar.button(t, on_click=show_page, key='menu' + t, args=(t, ))
-    st.sidebar.markdown(get_markdown_text("about"))
+    st.sidebar.markdown(get_markdown_text("about_1"))
+    image = Image.open('markdown/gauss_logo.png')
+    new_image = Image.new("RGBA", image.size, "WHITE")
+    new_image.paste(image, (0, 0), image)       
+    st.sidebar.image(new_image)
+    st.sidebar.markdown(get_markdown_text("about_2"))
 
     if 'page' not in st.session_state:
         st.session_state.page = 'Home'
