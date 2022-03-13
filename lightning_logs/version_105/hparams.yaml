@@ -1,7 +1,0 @@
-continent: Africa
-country: Ghana
-hidden_size: 60
-horizon: 12
-input_size: 1
-lag: 36
-learning_rate: 0.01

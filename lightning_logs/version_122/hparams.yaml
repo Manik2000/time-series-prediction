@@ -1,6 +1,0 @@
-continent: Europe
-hidden_size: 30
-horizon: 120
-input_size: 1
-lag: 24
-learning_rate: 0.01

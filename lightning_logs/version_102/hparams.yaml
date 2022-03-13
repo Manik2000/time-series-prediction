@@ -1,6 +1,0 @@
-continent: Africa
-hidden_size: 60
-horizon: 120
-input_size: 1
-lag: 36
-learning_rate: 0.01
