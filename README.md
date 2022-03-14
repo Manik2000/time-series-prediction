@@ -1,1 +1,3 @@
-# time_series_prediction
+# Global temperatures analysis and prediction
+
+Hey everyone! :joy:

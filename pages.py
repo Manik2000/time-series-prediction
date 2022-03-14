@@ -1,7 +1,6 @@
 import os
 import streamlit as st
 import numpy as np
-import altair as alt
 import pandas as pd
 import plotly.express as px
 from plotly.graph_objects import Figure
@@ -23,7 +22,7 @@ def models_page():
     st.markdown(get_markdown_text('models_page'))
 
     path = os.path.join(os.getcwd(), "loss", "test", "country")
-    models = ['LSTM', 'Baseline']  # to add later
+    models = ['LSTM', 'Baseline', 'Arima', 'XGBoost'] 
 
     def read_loss(model):
         df = pd.read_csv(os.path.join(path, f'{model}.csv'))

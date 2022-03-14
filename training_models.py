@@ -4,8 +4,6 @@ from boosting import XGBoost
 from Arima import Arima
 
 
-current = os.getcwd()
-
 def trainer(model, model_name, *args):
     if not os.path.isdir(rf"models\{model_name}"):
         os.makedirs(rf"models/{model_name}")

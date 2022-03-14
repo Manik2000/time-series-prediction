@@ -1,3 +1,4 @@
+from lib2to3.pytree import Base
 from Smooth import Smoother
 from DataLoader import Temperature
 import pandas as pd
@@ -7,12 +8,9 @@ import plotly.express as px
 import statsmodels.formula.api as sm
 from xicor.xicor import Xi
 from copy import deepcopy
-from statsmodels.tsa.seasonal import STL
-from scipy.stats import pearsonr
-from scipy.misc import derivative
-from scipy.optimize import fsolve
 from datetime import date
 from LSTM import LSTM, ContinentLSTM
+from Baseline import Baseline
 
 
 #COLORS = px.colors.qualitative.Dark24
@@ -113,9 +111,11 @@ class Climate:
                                   self._data.year.values[-model._seq_len:],
                                   self._data.month.values[-model._seq_len:],
                                   horizon)
-        else:
+        elif isinstance(Model, Baseline):
             preds = model.predict(self._data.AverageTemperature.values[-model._seq_len:],
                                   horizon)
+        else:
+            preds = model.predict(horizon)
             
         pred_data = deepcopy(self._data.iloc[:horizon])
         pred_data.index = pd.date_range(start=self._end + pd.DateOffset(months=1), periods=horizon, freq='M')
