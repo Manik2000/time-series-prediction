@@ -1,6 +1,4 @@
 Continent,Country,Loss
-Asia,Afghanistan,12.884717482800488
-Europe,Albania,13.193724586918252
 Africa,Algeria,4.380938469260174
 Oceania,American Samoa,0.70220951333469
 Europe,Andorra,7.327383960917693
@@ -181,3 +179,5 @@ Asia,Uzbekistan,14.89190142573013
 Asia,Yemen,1.85648848404762
 Africa,Zambia,2.239058936539859
 Africa,Zimbabwe,3.064702681731928
+Asia,Afghanistan,5.080127368416878
+Europe,Albania,3.039833714675397

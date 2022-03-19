@@ -1,0 +1,12 @@
+continent: Oceania
+hidden_size: 30
+horizon: 120
+input_size: 1
+lag: 24
+learning_rate: 0.001
+mean_month: 6.502325581395349
+mean_temp: 21.45478346253233
+mean_year: 1932.6248062015504
+std_month: 3.450030111457834
+std_temp: 4.558151794198093
+std_year: 46.55031791331477

@@ -57,7 +57,7 @@ class Baseline:
         loss_path = os.path.join(os.getcwd(), 'loss', 'test', 'country', f'Baseline.csv')
         losses = pd.read_csv(loss_path)
         losses = losses[losses['Country'] != self._country]
-        losses = losses.append({'Continent': self._continent, 'Country': self._country, 'Loss': loss}, ignore_index=True)
+        losses = pd.concat([losses, pd.DataFrame([{'Continent': self._continent, 'Country': self._country, 'Loss': loss}])])
         losses.to_csv(loss_path, index=False)
 
         return losses

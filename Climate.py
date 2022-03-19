@@ -11,6 +11,8 @@ from copy import deepcopy
 from datetime import date
 from LSTM import LSTM, ContinentLSTM
 from Baseline import Baseline
+from Arima import Arima
+from boosting import XGBoost
 
 
 #COLORS = px.colors.qualitative.Dark24
@@ -106,16 +108,16 @@ class Climate:
             self.train(Model)
             model = Model.load(self._name)
 
-        if isinstance(Model, LSTM):
+        if Model.__name__ == "LSTM":
             preds = model.predict(self._data.AverageTemperature.values[-model._seq_len:],
                                   self._data.year.values[-model._seq_len:],
                                   self._data.month.values[-model._seq_len:],
                                   horizon)
-        elif isinstance(Model, Baseline):
+        elif Model.__name__ == "Arima":
+            preds = model.predict(horizon)
+        else:
             preds = model.predict(self._data.AverageTemperature.values[-model._seq_len:],
                                   horizon)
-        else:
-            preds = model.predict(horizon)
             
         pred_data = deepcopy(self._data.iloc[:horizon])
         pred_data.index = pd.date_range(start=self._end + pd.DateOffset(months=1), periods=horizon, freq='M')
@@ -242,9 +244,9 @@ class Country(Climate):
         else:
             raise ValueError(f'There is no such a country {self._country}.')
 
-    def train(self, Model, ModelMain=ContinentLSTM, lag=24, horizon=120, hidden_size=30, learning_rate=1e-3, epochs_main=20, epochs=10, iters=100):
+    def train(self, Model, ModelMain=ContinentLSTM, lag=24, horizon=120, hidden_size=30, learning_rate=1e-4, epochs_main=10, epochs=5, iters=100):
 
-        if isinstance(Model, LSTM):
+        if Model.__name__ == "LSTM":
             data = Temperature(self._country, lag=lag, horizon=horizon, normalize=True, size=iters, by_batch=False)
             try:
                 model = Model(self._country, self._continent, learning_rate=learning_rate,

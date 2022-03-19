@@ -52,6 +52,7 @@ def create_continents(df):
                 return country
 
     df['Continent'] = df.apply(lambda row: get_continent(row.Country), axis=1)
+    df['is_continent'] = df['Country'] == df['Continent']
 
     return df
 
@@ -97,7 +98,7 @@ def preprocess(in_file="GlobalLandTemperaturesByCountry.csv", out_file='final_da
     df = create_continents(df)
     df = interpolation(df)
     df = get_iso_alpha(df)
-    df.dropna(inplace=True)
+    df.dropna(subset=list(set(df.columns).difference({'iso_alpha'})), inplace=True)
     df.to_csv(out_file, index=False)
 
     return df

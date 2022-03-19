@@ -1,20 +1,22 @@
 from LSTM import LSTM
 from Baseline import Baseline
+from Arima import Arima
+from boosting import XGBoost
 from Climate import Country
 import argparse
 import pandas as pd
 import os
 
-lag = 24 # two years
-horizon = 120 # ten years
+lag = 24  # two years
+horizon = 120  # ten years
 iters = 100
-hidden_size = 30 # month
+hidden_size = 30  # month
 
-continent_epochs = 20
-country_epochs = 10
+continent_epochs = 10
+country_epochs = 5
 
-extensions = ('pck', 'ckpt', 'json')
-models = ('Baseline', 'LSTM', 'XGBoost', 'ARIMA')
+extensions = ('pkl', 'ckpt', 'json')
+models = ('Baseline', 'LSTM', 'XGBoost', 'Arima')
 
 
 warn_path = lambda Model: os.path.join(os.getcwd(), 'models', Model.__name__, 'country', 'warns.txt')
@@ -30,9 +32,6 @@ def train_all(Model, countries):
                     for filename in [model_path(Model, ext) for ext in extensions]]):
             try:
                 country_model = Country(country)
-            except ValueError as e:
-                print(country, e)
-            try:
                 country_model.train(Model, lag=lag, horizon=horizon, hidden_size=hidden_size,
                                     epochs_main=continent_epochs, epochs=country_epochs, iters=iters)
             except:
@@ -41,7 +40,7 @@ def train_all(Model, countries):
                         os.remove(model_path(Model, ext))
                     except FileNotFoundError:
                         pass
-                with open(model_path(Model), 'a') as warns:
+                with open(warn_path(Model), 'a') as warns:
                     warns.write(f'{country}\n')
 
 

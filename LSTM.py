@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
@@ -34,33 +35,35 @@ class MainLSTM(pl.LightningModule):
         hi = torch.randn(x.size(0), self._hidden_size)
         ci = torch.randn(x.size(0), self._hidden_size)
 
-        x[:, :, 0] = x[:, :, 0] - self._mean_temp
-        x[:, :, 1] = (x[:, :, 1] - self._mean_year) / self._std_year
-        x[:, :, 1] = (x[:, :, 2] - self._mean_month) / self._std_month
+        x = x[:, :, 0] - self._mean_temp
+        #x[:, :, 1] = (x[:, :, 1] - self._mean_year) / self._std_year
+        #x[:, :, 1] = (x[:, :, 2] - self._mean_month) / self._std_month
         outputs = []
         if horizon:
             for i in range(horizon // self._seq_len + 1):
                 for month in range(self._seq_len):
                     hi, ci = self._lstm_cell(x[:, month+self._seq_len*i, :], (hi, ci))
                     outputs.append(self._linear(hi))
-                x = torch.cat((x,
+                """x = torch.cat((x,
                                torch.stack((torch.cat(outputs[-self._seq_len:], dim=1),
                                             x[:, -self._seq_len:, 1] + self._seq_len // 12 / self._std_year,
                                             x[:, -self._seq_len:, 2]),
                                            dim=-1)),
-                              dim=1)
+                              dim=1)"""
+                x = torch.cat((x, torch.cat(outputs[-self._seq_len:], dim=1)))
             return torch.stack(outputs[:horizon], dim=1) + self._mean_temp
         else:
             for i in range(self._output_size // self._seq_len + 1):
                 for month in range(self._seq_len):
                     hi, ci = self._lstm_cell(x[:, month+self._seq_len*i, :], (hi, ci))
                     outputs.append(self._linear(hi))
-                x = torch.cat((x,
+                """x = torch.cat((x,
                                torch.stack((torch.cat(outputs[-self._seq_len:], dim=1),
                                             x[:, -self._seq_len:, 1] + self._seq_len // 12 / self._std_year,
                                             x[:, -self._seq_len:, 1]),
                                            dim=-1)),
-                              dim=1)
+                              dim=1)"""
+                x = torch.cat((x, torch.cat(outputs[-self._seq_len:], dim=1)))
             return torch.stack(outputs[:self._output_size], dim=1) + self._mean_temp
 
     def training_step(self, batch, batch_idx):
@@ -111,7 +114,7 @@ class MainLSTM(pl.LightningModule):
 
 class ContinentLSTM(MainLSTM):
 
-    def __init__(self, continent, lag=24, horizon=120, hidden_size=30, input_size=3, learning_rate=1e-3,
+    def __init__(self, continent, lag=24, horizon=120, hidden_size=30, input_size=1, learning_rate=1e-3,
                  mean_temp=0, mean_year=0, mean_month=0, std_temp=1, std_year=1, std_month=1):
 
         super(ContinentLSTM, self).__init__(lag, horizon, hidden_size, input_size, learning_rate,
@@ -126,10 +129,9 @@ class ContinentLSTM(MainLSTM):
         monitor = pl.callbacks.ModelCheckpoint(monitor='val_loss', dirpath=path, filename=self._continent,
                                                save_top_k=1, mode="min")
 
-        if os.path.exists(os.path.join(
-                os.getcwd(), 'models', 'LSTM', 'continent', f'{self._continent}.ckpt')):
-            os.remove(os.path.join(
-                os.getcwd(), 'models', 'LSTM', 'continent', f'{self._continent}.ckpt'))
+        if os.path.exists(os.path.join(os.getcwd(), 'models', 'LSTM', 'continent', f'{self._continent}.ckpt')):
+            os.remove(os.path.join(os.getcwd(), 'models', 'LSTM', 'continent', f'{self._continent}.ckpt'))
+            os.path.join(os.getcwd(), 'loss', 'validation', 'continent', 'LSTM', f'{self._continent}.txt')
         trainer = pl.Trainer(auto_lr_find=True, max_epochs=epochs, callbacks=[monitor])
         trainer.fit(model=self, train_dataloaders=train, val_dataloaders=val)
         trainer.test(dataloaders=test)
@@ -148,12 +150,19 @@ class ContinentLSTM(MainLSTM):
     def validation_epoch_end(self, loss):
 
         with open(os.path.join(os.getcwd(), 'loss', 'validation', 'continent', 'LSTM', f'{self._continent}.txt'), 'a') as results:
-            results.write(f'{torch.mean(loss)}\n')
+            results.write(f'{torch.mean(torch.stack(loss)).item()}\n')
 
     def test_epoch_end(self, loss):
 
-        with open(os.path.join(os.getcwd(), 'loss', 'test', 'LSTM', 'continent.csv'), 'a') as results:
-            results.write(f'{self._continent},{torch.mean(loss)}\n')
+        loss_path = os.path.join(os.getcwd(), 'loss', 'test', 'continent', f'LSTM.csv')
+        losses = pd.read_csv(loss_path)
+        losses = losses[losses['Continent'] != self._country]
+        losses = pd.concat([losses,
+                            pd.DataFrame([{'Continent': self._continent,
+                                           'Loss': torch.mean(torch.stack(loss)).item()}])])
+        losses.to_csv(loss_path, index=False)
+
+        return losses
 
 
 class LSTM(MainLSTM):
@@ -194,10 +203,9 @@ class LSTM(MainLSTM):
         monitor = pl.callbacks.ModelCheckpoint(monitor='val_loss', dirpath=path, filename=self._country,
                                                save_top_k=1, mode="min")
 
-        if os.path.exists(os.path.join(
-                os.getcwd(), 'models', 'LSTM', 'country', f'{self._country}.ckpt')):
-            os.remove(os.path.join(
-                os.getcwd(), 'models', 'LSTM', 'country', f'{self._country}.ckpt'))
+        if os.path.exists(os.path.join(os.getcwd(), 'models', 'LSTM', 'country', f'{self._country}.ckpt')):
+            os.remove(os.path.join(os.getcwd(), 'models', 'LSTM', 'country', f'{self._country}.ckpt'))
+            os.remove(os.path.join(os.getcwd(), 'loss', 'validation', 'country', 'LSTM', f'{self._country}.txt'))
         trainer = pl.Trainer(auto_lr_find=True, max_epochs=epochs, callbacks=[monitor])
         trainer.fit(model=self, train_dataloaders=train, val_dataloaders=val)
         trainer.test(dataloaders=test)
@@ -216,9 +224,17 @@ class LSTM(MainLSTM):
     def validation_epoch_end(self, loss):
 
         with open(os.path.join(os.getcwd(), 'loss', 'validation', 'country', 'LSTM', f'{self._country}.txt'), 'a') as results:
-            results.write(f'{loss}\n')
+            results.write(f'{torch.mean(torch.stack(loss)).item()}\n')
 
     def test_epoch_end(self, loss):
 
-        with open(os.path.join(os.getcwd(), 'loss', 'test', 'LSTM', 'country.csv'), 'a') as results:
-            results.write(f'{self._continent},{self._country},{loss}\n')
+        loss_path = os.path.join(os.getcwd(), 'loss', 'test', 'country', f'LSTM.csv')
+        losses = pd.read_csv(loss_path)
+        losses = losses[losses['Country'] != self._country]
+        losses = pd.concat([losses,
+                            pd.DataFrame([{'Continent': self._continent,
+                                           'Country': self._country,
+                                           'Loss': torch.mean(torch.stack(loss)).item()}])])
+        losses.to_csv(loss_path, index=False)
+
+        return losses

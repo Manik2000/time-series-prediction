@@ -19,3 +19,26 @@
 [tensor(0.7018), tensor(0.6404), tensor(0.5769), tensor(0.5684), tensor(0.5559), tensor(0.4825), tensor(0.6198), tensor(0.6048), tensor(0.7482), tensor(0.8828), tensor(0.8978), tensor(0.7377), tensor(0.7895), tensor(0.7059), tensor(0.8213), tensor(0.8955), tensor(0.7777), tensor(0.8325), tensor(0.8283), tensor(0.7553), tensor(0.8303), tensor(0.9044), tensor(0.8953), tensor(0.7580), tensor(0.9296), tensor(0.8729), tensor(0.7033), tensor(0.8234), tensor(0.8213), tensor(0.8027), tensor(0.9421), tensor(1.0963), tensor(0.8586), tensor(1.0015), tensor(1.0239), tensor(0.9456), tensor(0.9475), tensor(1.1822), tensor(0.6826), tensor(0.7526), tensor(0.7076), tensor(0.6817), tensor(0.6887), tensor(0.7585), tensor(0.7070), tensor(0.8852), tensor(0.9295), tensor(0.6679), tensor(0.7688), tensor(0.7127), tensor(0.6038), tensor(0.7433), tensor(0.9389), tensor(0.6844), tensor(0.7081), tensor(0.6669), tensor(0.7977), tensor(0.7252), tensor(0.7137), tensor(0.7088), tensor(0.7970), tensor(0.8651), tensor(0.5956), tensor(0.7704), tensor(0.5955), tensor(0.5580), tensor(0.7511), tensor(0.6163), tensor(0.7106), tensor(0.7063), tensor(0.6967), tensor(0.6083), tensor(0.6771), tensor(0.6885), tensor(0.6727), tensor(0.7630), tensor(0.5850), tensor(0.5842), tensor(0.7909), tensor(0.6206), tensor(0.7134), tensor(0.7431), tensor(0.6615)]
 [tensor(0.6108), tensor(0.6824), tensor(0.5081), tensor(0.5177), tensor(0.6698), tensor(0.5117), tensor(0.6184), tensor(0.5864), tensor(0.8374), tensor(0.7963), tensor(0.7776), tensor(0.7054), tensor(0.7258), tensor(0.7322), tensor(0.7539), tensor(0.8335), tensor(0.7881), tensor(0.7804), tensor(0.8500), tensor(0.8445), tensor(0.8472), tensor(0.7683), tensor(0.8320), tensor(0.8129), tensor(0.7528), tensor(0.9123), tensor(0.7356), tensor(0.8328), tensor(0.9611), tensor(0.7966), tensor(0.8502), tensor(0.9213), tensor(0.8578), tensor(0.9618), tensor(1.0183), tensor(0.9402), tensor(0.9725), tensor(1.2069), tensor(0.6856), tensor(0.7916), tensor(0.6741), tensor(0.6705), tensor(0.7106), tensor(0.7924), tensor(0.6855), tensor(0.8087), tensor(0.8144), tensor(0.6318), tensor(0.6949), tensor(0.8149), tensor(0.7019), tensor(0.6989), tensor(0.7136), tensor(0.6605), tensor(0.7387), tensor(0.9663), tensor(0.7427), tensor(0.8466), tensor(0.9060), tensor(0.6719), tensor(0.6606), tensor(0.9184), tensor(0.6662), tensor(0.5745), tensor(0.6668), tensor(0.6434), tensor(0.6883), tensor(0.7400), tensor(0.6356), tensor(0.7505), tensor(0.7170), tensor(0.6078), tensor(0.7442), tensor(0.6314), tensor(0.7466), tensor(0.6084), tensor(0.6544), tensor(0.6295), tensor(0.6473), tensor(0.6561), tensor(0.6334), tensor(0.8660), tensor(0.6801)]
 [tensor(0.5740), tensor(0.5201), tensor(0.4289), tensor(0.5537), tensor(0.4547), tensor(0.5396), tensor(0.5740), tensor(0.4673), tensor(0.7088), tensor(0.6680), tensor(0.6795), tensor(0.6306), tensor(0.6557), tensor(0.7114), tensor(0.6363), tensor(0.6885), tensor(0.6104), tensor(0.6427), tensor(0.6498), tensor(0.6092), tensor(0.5781), tensor(0.7200), tensor(0.6851), tensor(0.6014), tensor(0.6443), tensor(0.6266), tensor(0.6131), tensor(0.6148), tensor(0.7564), tensor(0.6841), tensor(0.7339), tensor(0.9030), tensor(0.7915), tensor(0.8035), tensor(0.9401), tensor(0.6950), tensor(0.9676), tensor(0.9090), tensor(0.5539), tensor(0.7537), tensor(0.6313), tensor(0.5408), tensor(0.6807), tensor(0.5920), tensor(0.6684), tensor(0.7741), tensor(0.8181), tensor(0.6308), tensor(0.7251), tensor(0.6470), tensor(0.6290), tensor(0.7470), tensor(0.7750), tensor(0.6687), tensor(0.7423), tensor(0.7264), tensor(0.5959), tensor(0.7692), tensor(0.6396), tensor(0.5801), tensor(0.6766), tensor(0.7884), tensor(0.5461), tensor(0.5930), tensor(0.6798), tensor(0.5390), tensor(0.6891), tensor(0.7321), tensor(0.7224), tensor(0.7996), tensor(0.7483), tensor(0.6935), tensor(0.7520), tensor(0.6499), tensor(0.8049), tensor(0.8824), tensor(0.6649), tensor(0.6938), tensor(0.7347), tensor(0.7517), tensor(0.7335), tensor(0.7147), tensor(0.7304)]
+99.56890869140625
+59.90593338012695
+99.5601806640625
+60.940399169921875
+22.38518524169922
+8.218072891235352
+3.7171995639801025
+2.0168051719665527
+1.3791356086730957
+1.111588954925537
+0.9931104779243469
+0.9627401232719421
+0.925888180732727
+0.9117932319641113
+0.8941231369972229
+0.9093422293663025
+0.8635175824165344
+0.8786497712135315
+0.8637837767601013
+0.91912841796875
+0.9276477098464966
+0.9741085767745972
+1.0152397155761719
