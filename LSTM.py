@@ -35,35 +35,35 @@ class MainLSTM(pl.LightningModule):
         hi = torch.randn(x.size(0), self._hidden_size)
         ci = torch.randn(x.size(0), self._hidden_size)
 
-        x = x[:, :, 0] - self._mean_temp
-        #x[:, :, 1] = (x[:, :, 1] - self._mean_year) / self._std_year
-        #x[:, :, 1] = (x[:, :, 2] - self._mean_month) / self._std_month
+        x[:, :, 0] = x[:, :, 0] - self._mean_temp #/ self._std_temp
+        x[:, :, 1] = (x[:, :, 1] - self._mean_year) / self._std_year
+        x[:, :, 1] = (x[:, :, 2] - self._mean_month) / self._std_month
         outputs = []
         if horizon:
             for i in range(horizon // self._seq_len + 1):
                 for month in range(self._seq_len):
-                    hi, ci = self._lstm_cell(x[:, month+self._seq_len*i, :], (hi, ci))
+                    hi, ci = self._lstm_cell(x[:, month, :], (hi, ci))
                     outputs.append(self._linear(hi))
-                """x = torch.cat((x,
+                x = torch.cat((x,
                                torch.stack((torch.cat(outputs[-self._seq_len:], dim=1),
                                             x[:, -self._seq_len:, 1] + self._seq_len // 12 / self._std_year,
                                             x[:, -self._seq_len:, 2]),
                                            dim=-1)),
-                              dim=1)"""
-                x = torch.cat((x, torch.cat(outputs[-self._seq_len:], dim=1)))
+                              dim=1)
+                #x = torch.cat((x, torch.stack(outputs[-self._seq_len:], dim=1)), dim=1)
             return torch.stack(outputs[:horizon], dim=1) + self._mean_temp
         else:
             for i in range(self._output_size // self._seq_len + 1):
                 for month in range(self._seq_len):
-                    hi, ci = self._lstm_cell(x[:, month+self._seq_len*i, :], (hi, ci))
+                    hi, ci = self._lstm_cell(x[:, month, :], (hi, ci))
                     outputs.append(self._linear(hi))
-                """x = torch.cat((x,
+                x = torch.cat((x,
                                torch.stack((torch.cat(outputs[-self._seq_len:], dim=1),
                                             x[:, -self._seq_len:, 1] + self._seq_len // 12 / self._std_year,
                                             x[:, -self._seq_len:, 1]),
                                            dim=-1)),
-                              dim=1)"""
-                x = torch.cat((x, torch.cat(outputs[-self._seq_len:], dim=1)))
+                              dim=1)
+                #x = torch.cat((x, torch.stack(outputs[-self._seq_len:], dim=1)), dim=1)
             return torch.stack(outputs[:self._output_size], dim=1) + self._mean_temp
 
     def training_step(self, batch, batch_idx):
@@ -114,7 +114,7 @@ class MainLSTM(pl.LightningModule):
 
 class ContinentLSTM(MainLSTM):
 
-    def __init__(self, continent, lag=24, horizon=120, hidden_size=30, input_size=1, learning_rate=1e-3,
+    def __init__(self, continent, lag=24, horizon=120, hidden_size=30, input_size=3, learning_rate=1e-3,
                  mean_temp=0, mean_year=0, mean_month=0, std_temp=1, std_year=1, std_month=1):
 
         super(ContinentLSTM, self).__init__(lag, horizon, hidden_size, input_size, learning_rate,

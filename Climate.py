@@ -244,7 +244,7 @@ class Country(Climate):
         else:
             raise ValueError(f'There is no such a country {self._country}.')
 
-    def train(self, Model, ModelMain=ContinentLSTM, lag=24, horizon=120, hidden_size=30, learning_rate=1e-4, epochs_main=10, epochs=5, iters=100):
+    def train(self, Model, ModelMain=ContinentLSTM, lag=24, horizon=120, hidden_size=30, learning_rate=1e-3, epochs_main=10, epochs=5, iters=100):
 
         if Model.__name__ == "LSTM":
             data = Temperature(self._country, lag=lag, horizon=horizon, normalize=True, size=iters, by_batch=False)

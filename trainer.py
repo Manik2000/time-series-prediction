@@ -7,15 +7,15 @@ import argparse
 import pandas as pd
 import os
 
-lag = 24  # two years
-horizon = 120  # ten years
+lag = 60  # two years
+horizon = 60  # ten years
 iters = 100
-hidden_size = 30  # month
+hidden_size = 60  # month
 
 continent_epochs = 10
 country_epochs = 5
 
-extensions = ('pkl', 'ckpt', 'json')
+extensions = ('pkl', 'ckpt', 'json', 'joblib')
 models = ('Baseline', 'LSTM', 'XGBoost', 'Arima')
 
 

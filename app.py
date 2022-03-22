@@ -15,8 +15,8 @@ button {
 
 
 mapping = {
-    "Home": home_page,
-    "EDA": eda_page,
+    #"Home": home_page,
+    #"EDA": eda_page,
     "Models": models_page,
     "Analysis": analysis_page,
     "Map": map_page,
@@ -39,7 +39,7 @@ def show_app():
     st.sidebar.markdown(get_markdown_text("about_2"))
 
     if 'page' not in st.session_state:
-        st.session_state.page = 'Home'
+        st.session_state.page = 'Models'
 
     page = st.session_state.page
     func = mapping[page]    
